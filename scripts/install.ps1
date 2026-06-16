@@ -6,7 +6,7 @@
   Installs prerequisites and sets up the current checked-out cat-cafe repo.
   Clone or download the repo first, then run this helper from inside it.
   Steps: env detect -> preflight network check -> Node/pnpm install -> Redis -> .env generate
-         -> deps & build -> skills mount -> AI CLI tools -> verify & optionally start
+         -> deps & build -> AI CLI tools -> verify & optionally start
 
 .EXAMPLE
   # From repo root:
