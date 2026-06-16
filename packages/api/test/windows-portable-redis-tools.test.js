@@ -364,4 +364,3 @@ test('Windows installer retries pnpm shim detection after bootstrap instead of f
   assert.match(installScript, /Start-Sleep -Milliseconds \$DelayMs/);
   assert.match(installScript, /\$pnpmStatus = Get-PnpmStatus -Attempts 6/);
 });
-
