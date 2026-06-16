@@ -157,10 +157,7 @@ describe('runtime governance creates project-level skill links (ADR-025)', () =>
     assert.ok(content.includes('.codex/skills'), 'skill-sync must reference .codex/skills');
     assert.ok(content.includes('.gemini/skills'), 'skill-sync must reference .gemini/skills');
     assert.ok(content.includes('.kimi/skills'), 'skill-sync must reference .kimi/skills');
-    assert.ok(
-      content.includes("process.platform === 'win32'"),
-      'skill-sync must handle Windows junction',
-    );
+    assert.ok(content.includes("process.platform === 'win32'"), 'skill-sync must handle Windows junction');
   });
 
   it('governance preflight checks skill symlinks are present', async () => {
