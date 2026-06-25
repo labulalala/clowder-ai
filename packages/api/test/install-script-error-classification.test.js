@@ -159,24 +159,23 @@ test('Invoke-PnpmInstallWithCapturedOutput trusts $LASTEXITCODE over pipeline ex
   // the 2>&1 pipeline can throw even when pnpm itself exited 0.
   // The catch path must check $LASTEXITCODE and treat exit 0 as success, not failure.
   const body = getInvokePnpmInstallFunctionBody();
-  // The function has a catch block that checks $LASTEXITCODE after the pipeline
-  // throws. Rather than trying to extract the catch block with regex (fragile
-  // due to nested bare catch {} blocks for spinner operations), verify the
-  // invariant: a multi-line catch block exists that contains the LASTEXITCODE
-  // check. The multi-line catch is '} catch {' followed by a newline (not the
-  // bare '} catch {}' one-liners).
-  const multiLineCatchIdx = body.indexOf('} catch {\r\n');
-  if (multiLineCatchIdx < 0) {
-    // Also try LF-only
-    const altIdx = body.indexOf('} catch {\n');
-    assert.ok(altIdx >= 0, 'must have multi-line catch block');
-  }
-  // The LASTEXITCODE check must appear after the catch keyword
-  const catchIdx = body.indexOf('} catch {');
-  assert.ok(catchIdx >= 0, 'must have catch block');
-  const afterCatch = body.substring(catchIdx);
+  // Anchor to the actual pnpm pipeline catch block by locating the
+  // "Two distinct scenarios reach this catch:" comment, which uniquely
+  // identifies the DEP0169 tolerance catch (not the bare spinner catch {}).
+  const scenariosIdx = body.indexOf('Two distinct scenarios');
+  assert.ok(scenariosIdx >= 0, 'must have DEP0169 tolerance catch block with "Two distinct scenarios" comment');
+  // Walk backward from the comment to find its enclosing '} catch {'
+  const beforeComment = body.substring(0, scenariosIdx);
+  const catchIdx = beforeComment.lastIndexOf('} catch {');
+  assert.ok(catchIdx >= 0, 'must have catch block before "Two distinct scenarios" comment');
+  // Slice from catch start to the following '} finally {' to capture the
+  // full pnpm pipeline catch block (excluding later code outside it).
+  const fromCatch = body.substring(catchIdx);
+  const finallyIdx = fromCatch.indexOf('} finally {');
+  assert.ok(finallyIdx >= 0, 'catch block must be followed by } finally {');
+  const catchBlock = fromCatch.substring(0, finallyIdx);
   assert.match(
-    afterCatch,
+    catchBlock,
     /\$(?:global:)?LASTEXITCODE\s*-eq\s*0/,
     'catch block must check $LASTEXITCODE (optionally with $global: scope) -eq 0 to avoid DEP0169 false failures',
   );
@@ -260,15 +259,19 @@ test('Invoke-PnpmInstallWithCapturedOutput reads $global:LASTEXITCODE explicitly
   assert.ok(successCheck, 'must have an Ok = $... -eq 0 check on the success path');
   assert.equal(successCheck[1], '$global:LASTEXITCODE', 'success path must read $global:LASTEXITCODE explicitly');
   // The catch path must also read $global:LASTEXITCODE for the same reason.
-  // Rather than extracting the catch block with regex (fragile due to nested
-  // bare catch {} blocks for spinner operations), verify the invariant:
-  // $global:LASTEXITCODE appears in a catch context (after '} catch {').
-  const catchIdx = body.indexOf('} catch {');
-  assert.ok(catchIdx >= 0, 'must have catch block');
-  const afterCatch = body.substring(catchIdx);
+  // Anchor to the pnpm pipeline catch block using the "Two distinct scenarios"
+  // comment, then extract the block between the catch and its following finally.
+  const scenariosIdx = body.indexOf('Two distinct scenarios');
+  assert.ok(scenariosIdx >= 0, 'must have DEP0169 tolerance catch block with "Two distinct scenarios" comment');
+  const beforeComment = body.substring(0, scenariosIdx);
+  const catchIdx = beforeComment.lastIndexOf('} catch {');
+  assert.ok(catchIdx >= 0, 'must have catch block before "Two distinct scenarios" comment');
+  const fromCatch = body.substring(catchIdx);
+  const finallyIdx = fromCatch.indexOf('} finally {');
+  assert.ok(finallyIdx >= 0, 'catch block must be followed by } finally {');
+  const catchBlock = fromCatch.substring(0, finallyIdx);
   assert.match(
-    afterCatch,
-    /\$global:LASTEXITCODE\s*-eq\s*0/,
+    catchBlock,
     /\$global:LASTEXITCODE\s*-eq\s*0/,
     'catch path must read $global:LASTEXITCODE explicitly to detect pnpm success-with-pipeline-throw',
   );
