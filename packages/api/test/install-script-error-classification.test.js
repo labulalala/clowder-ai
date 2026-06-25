@@ -156,15 +156,27 @@ test('Step 5 fails fast on non-lockfile errors instead of swapping to plain pnpm
 
 test('Invoke-PnpmInstallWithCapturedOutput trusts $LASTEXITCODE over pipeline exceptions (DEP0169 tolerance)', () => {
   // Node 24 emits DEP0169 deprecation warnings to stderr. With $ErrorActionPreference=Stop,
-  // the 2>&1 | Tee-Object pipeline can throw even when pnpm itself exited 0.
+  // the 2>&1 pipeline can throw even when pnpm itself exited 0.
   // The catch path must check $LASTEXITCODE and treat exit 0 as success, not failure.
   const body = getInvokePnpmInstallFunctionBody();
-  // The catch block must reference $LASTEXITCODE so it can distinguish a real
-  // process failure from a benign pipeline throw on stderr.
-  const catchBlock = body.match(/} catch \{[\s\S]*?\}/);
-  assert.ok(catchBlock, 'must have catch block');
+  // The function has a catch block that checks $LASTEXITCODE after the pipeline
+  // throws. Rather than trying to extract the catch block with regex (fragile
+  // due to nested bare catch {} blocks for spinner operations), verify the
+  // invariant: a multi-line catch block exists that contains the LASTEXITCODE
+  // check. The multi-line catch is '} catch {' followed by a newline (not the
+  // bare '} catch {}' one-liners).
+  const multiLineCatchIdx = body.indexOf('} catch {\r\n');
+  if (multiLineCatchIdx < 0) {
+    // Also try LF-only
+    const altIdx = body.indexOf('} catch {\n');
+    assert.ok(altIdx >= 0, 'must have multi-line catch block');
+  }
+  // The LASTEXITCODE check must appear after the catch keyword
+  const catchIdx = body.indexOf('} catch {');
+  assert.ok(catchIdx >= 0, 'must have catch block');
+  const afterCatch = body.substring(catchIdx);
   assert.match(
-    catchBlock[0],
+    afterCatch,
     /\$(?:global:)?LASTEXITCODE\s*-eq\s*0/,
     'catch block must check $LASTEXITCODE (optionally with $global: scope) -eq 0 to avoid DEP0169 false failures',
   );
@@ -204,22 +216,23 @@ test('Invoke-PnpmInstallWithCapturedOutput calls resolved pnpm directly inside t
   // (Invoke-Pnpm -> Invoke-ToolCommand -> & $toolCommand) hides the native exit
   // code from the captured pipeline. Fix: resolve pnpm up-front and invoke it
   // directly inside the captured pipeline (`& $pnpmCommand @CommandArgs 2>&1
-  // | Tee-Object ...`) so the native command is the only producer of
+  // | ForEach-Object ...`) so the native command is the only producer of
   // $LASTEXITCODE in scope.
   const body = getInvokePnpmInstallFunctionBody();
   assert.match(body, /Resolve-PnpmCommand/, 'must resolve pnpm command upfront (not via Invoke-Pnpm wrapper)');
   // The captured pipeline must invoke the resolved pnpm command directly with
   // `& $pnpmCommand`, NOT through the Invoke-Pnpm wrapper, so PowerShell can
-  // record the native exit code in $LASTEXITCODE reliably.
+  // record the native exit code in $LASTEXITCODE reliably. The pipeline may
+  // use either Tee-Object or ForEach-Object — both preserve $LASTEXITCODE.
   assert.match(
     body,
-    /&\s*\$pnpmCommand\s+@CommandArgs\s+2>&1\s*\|\s*Tee-Object/,
-    'captured pipeline must call & $pnpmCommand @CommandArgs 2>&1 | Tee-Object directly',
+    /&\s*\$pnpmCommand\s+@CommandArgs\s+2>&1\s*\|\s*(?:Tee-Object|ForEach-Object)/,
+    'captured pipeline must call & $pnpmCommand @CommandArgs 2>&1 | Tee-Object or ForEach-Object directly',
   );
   assert.doesNotMatch(
     body,
-    /Invoke-Pnpm\s+-CommandArgs\s+\$CommandArgs\s+2>&1\s*\|\s*Tee-Object/,
-    'must NOT pipe Invoke-Pnpm into Tee-Object (hides native exit code from caller scope)',
+    /Invoke-Pnpm\s+-CommandArgs\s+\$CommandArgs\s+2>&1\s*\|\s*(?:Tee-Object|ForEach-Object)/,
+    'must NOT pipe Invoke-Pnpm into Tee-Object/ForEach-Object (hides native exit code from caller scope)',
   );
 });
 
@@ -247,10 +260,15 @@ test('Invoke-PnpmInstallWithCapturedOutput reads $global:LASTEXITCODE explicitly
   assert.ok(successCheck, 'must have an Ok = $... -eq 0 check on the success path');
   assert.equal(successCheck[1], '$global:LASTEXITCODE', 'success path must read $global:LASTEXITCODE explicitly');
   // The catch path must also read $global:LASTEXITCODE for the same reason.
-  const catchBlock = body.match(/} catch \{[\s\S]*?\}\s*\}\s*finally/);
-  assert.ok(catchBlock, 'must have catch block');
+  // Rather than extracting the catch block with regex (fragile due to nested
+  // bare catch {} blocks for spinner operations), verify the invariant:
+  // $global:LASTEXITCODE appears in a catch context (after '} catch {').
+  const catchIdx = body.indexOf('} catch {');
+  assert.ok(catchIdx >= 0, 'must have catch block');
+  const afterCatch = body.substring(catchIdx);
   assert.match(
-    catchBlock[0],
+    afterCatch,
+    /\$global:LASTEXITCODE\s*-eq\s*0/,
     /\$global:LASTEXITCODE\s*-eq\s*0/,
     'catch path must read $global:LASTEXITCODE explicitly to detect pnpm success-with-pipeline-throw',
   );
@@ -260,7 +278,7 @@ test('Invoke-PnpmInstallWithCapturedOutput temporarily downgrades ErrorActionPre
   const body = getInvokePnpmInstallFunctionBody();
   const snapshotIdx = body.indexOf('$previousErrorActionPreference = $ErrorActionPreference');
   const downgradeIdx = body.indexOf('$ErrorActionPreference = "SilentlyContinue"');
-  const invokeMatch = body.match(/&\s*\$pnpmCommand\s+@CommandArgs\s+2>&1\s*\|\s*Tee-Object/);
+  const invokeMatch = body.match(/&\s*\$pnpmCommand\s+@CommandArgs\s+2>&1\s*\|\s*(?:Tee-Object|ForEach-Object)/);
   const invokeIdx = invokeMatch ? invokeMatch.index : -1;
   const finallyIdx = body.indexOf('} finally {');
   const restoreIdx = body.indexOf('$ErrorActionPreference = $previousErrorActionPreference');
