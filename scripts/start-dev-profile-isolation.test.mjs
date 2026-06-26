@@ -633,6 +633,11 @@ describe('cross-platform pnpm-start profile propagation (#421)', () => {
       'Windows production starts must default CAT_CAFE_WORKSPACE_ROOT to $ProjectRoot while preserving explicit env overrides',
     );
     assert.match(
+      ps1,
+      /\$workspaceRootMarker\s*=\s*if\s*\(-not\s*\$Dev\)\s*\{\s*if\s*\(\$env:CAT_CAFE_WORKSPACE_ROOT\)\s*\{\s*\$env:CAT_CAFE_WORKSPACE_ROOT\s*\}\s*else\s*\{\s*\$ProjectRoot\s*\}\s*\}/,
+      'Windows production CAT_CAFE_WORKSPACE_ROOT must prefer explicit $env override before falling back to $ProjectRoot (guards against accidental override-stripping refactors)',
+    );
+    assert.match(
       overridesBlock,
       /CAT_CAFE_WORKSPACE_ROOT\s*=\s*\$workspaceRootMarker/,
       'runtimeEnvOverrides must pass CAT_CAFE_WORKSPACE_ROOT into the API job after dotenv reload',
