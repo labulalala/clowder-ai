@@ -68,10 +68,8 @@ const OPENCODE_AUTO_APPROVE_FLAG_ALIASES = new Set([
 ]);
 const OPENCODE_AUTO_APPROVE_MIN_VERSION = '1.17.12';
 const OPENCODE_AUTO_APPROVE_PROBE_TIMEOUT_MS = 10_000;
-const OPENCODE_AUTO_APPROVE_UNSUPPORTED_MESSAGE =
-  `OpenCode 版本过低，不支持 --auto 自动审批；请升级 opencode-ai 到 >= ${OPENCODE_AUTO_APPROVE_MIN_VERSION} 后重试。`;
-const OPENCODE_AUTO_APPROVE_PROBE_FAILED_MESSAGE =
-  `无法确认 OpenCode 是否支持 --auto 自动审批；请升级 opencode-ai 到 >= ${OPENCODE_AUTO_APPROVE_MIN_VERSION} 后重试。`;
+const OPENCODE_AUTO_APPROVE_UNSUPPORTED_MESSAGE = `OpenCode 版本过低，不支持 --auto 自动审批；请升级 opencode-ai 到 >= ${OPENCODE_AUTO_APPROVE_MIN_VERSION} 后重试。`;
+const OPENCODE_AUTO_APPROVE_PROBE_FAILED_MESSAGE = `无法确认 OpenCode 是否支持 --auto 自动审批；请升级 opencode-ai 到 >= ${OPENCODE_AUTO_APPROVE_MIN_VERSION} 后重试。`;
 
 type OpenCodeAutoApproveProbeResult = { supported: true } | { supported: false; message: string };
 type OpenCodeAutoApproveProbeFn = (options: {

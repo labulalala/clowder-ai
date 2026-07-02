@@ -210,29 +210,25 @@ describe('OpenCode headless permission mode', () => {
 
     assert.ok(args.includes('--format'), 'must run in JSON event stream mode');
     assert.ok(args.includes('--auto'), 'must auto-approve permissions for headless runs');
-    assert.equal(
-      args.filter((arg) => arg === '--auto').length,
-      1,
-      'must inject auto-approval flag exactly once',
-    );
+    assert.equal(args.filter((arg) => arg === '--auto').length, 1, 'must inject auto-approval flag exactly once');
   });
 
   test('opencode CLI args do not duplicate user-provided --auto', async () => {
     const args = await invokeOpenCodeAndCaptureArgs({ cliConfigArgs: ['--auto'] });
 
     assert.ok(args.includes('--auto'), 'must preserve user-provided public auto-approval flag');
-    assert.equal(
-      args.filter((arg) => arg === '--auto').length,
-      1,
-      'must not duplicate auto-approval aliases',
-    );
+    assert.equal(args.filter((arg) => arg === '--auto').length, 1, 'must not duplicate auto-approval aliases');
   });
 
   test('opencode CLI args let user-provided legacy alias replace default --auto', async () => {
     const args = await invokeOpenCodeAndCaptureArgs({ cliConfigArgs: ['--dangerously-skip-permissions'] });
 
     assert.ok(args.includes('--dangerously-skip-permissions'), 'must preserve user-provided legacy alias');
-    assert.equal(args.filter((arg) => arg === '--auto').length, 0, 'must not inject --auto when user controls approval');
+    assert.equal(
+      args.filter((arg) => arg === '--auto').length,
+      0,
+      'must not inject --auto when user controls approval',
+    );
   });
 
   test('opencode auto-approval probe rejects CLIs without --auto support', async () => {
