@@ -78,6 +78,8 @@ type OpenCodeAutoApproveProbeFn = (options: {
   env?: Record<string, string | null>;
 }) => Promise<OpenCodeAutoApproveProbeResult>;
 
+// Process-wide cache: --auto support is a property of the installed opencode binary.
+// Restart the API process after upgrading opencode so this capability is re-probed.
 let sharedOpenCodeAutoApproveProbe: Promise<OpenCodeAutoApproveProbeResult> | undefined;
 
 export interface OpenCodeEnvDebugSummary {
@@ -528,6 +530,8 @@ export class OpenCodeAgentService implements L0InjectableAgentService {
     env?: Record<string, string | null>,
   ): Promise<void> {
     const result = await this.getAutoApproveProbe(command, cwd, env);
+    // Reject before launching the real headless run. invoke() surfaces this as
+    // error + done with upgrade guidance instead of continuing without approvals.
     if (!result.supported) throw new Error(result.message);
   }
 
