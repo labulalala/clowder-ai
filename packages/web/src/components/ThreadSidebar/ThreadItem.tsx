@@ -236,13 +236,14 @@ export function ThreadItem({
         ) : (
           <span className="flex min-w-0 flex-1 items-center gap-1">
             {isPinned && (
-              <span className="inline-flex flex-shrink-0 text-cafe-accent" aria-label="已置顶">
+              <span className="inline-flex flex-shrink-0 text-cafe-accent" role="img" aria-label="已置顶">
                 <PinIcon />
               </span>
             )}
             {isFavorited && (
               <span
                 className="inline-flex flex-shrink-0 text-conn-amber-text"
+                role="img"
                 aria-label="已收藏"
                 data-testid="thread-favorite-mark"
               >
