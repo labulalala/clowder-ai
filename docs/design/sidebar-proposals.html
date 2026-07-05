@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>对话列表面板 — 改版方案 v9</title>
+<style>
+  :root {
+    --console-panel-bg: #f2ede6;
+    --console-card-soft-bg: #e6e0d6;
+    --console-hover-bg: rgba(0,0,0,0.04);
+    --console-active-bg: #fdf6e8;
+    --console-field-bg: #f4f0ea;
+    --console-input-stroke: #d4cbc0;
+    --console-border-soft: #d4cbc0;
+
+    --cafe-black: #2d2825;
+    --cafe-secondary: #6e655e;
+    --cafe-muted: #8a8078;
+    --cafe-accent: #b8842a;
+    --cafe-subtle: #e8e2d8;
+    --cafe-surface: #f2ede6;
+    --cafe-surface-elevated: #fcfaf7;
+
+    --conn-amber-bg: #fdf6e8;
+    --conn-amber-text: #966a22;
+    --conn-amber-ring: #f5d88e;
+    --conn-red-text: #c53030;
+    --conn-red-bg: #fef2f2;
+    --conn-emerald-text: #38a169;
+    --conn-blue-text: #3b82f6;
+    --conn-purple-text: #8b5cf6;
+
+    --cat-blue: #7eb8da;
+    --cat-pink: #d4a0b9;
+    --cat-gold: #d4b483;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#e8e2d8; color:var(--cafe-black); -webkit-font-smoothing:antialiased; }
+
+  .layout { display:flex; justify-content:center; gap:32px; padding:24px 32px; max-width:1280px; margin:0 auto; flex-wrap:wrap; }
+  .panel-wrap { width:248px; flex-shrink:0; }
+  .panel-label { font-size:13px; font-weight:600; margin-bottom:8px; color:var(--cafe-secondary); display:flex; align-items:center; gap:6px; }
+  .panel-label .tag { font-size:10px; font-weight:500; padding:1px 6px; border-radius:99px; background:var(--conn-amber-bg); color:var(--conn-amber-text); }
+
+  .sidebar { width:100%; height:660px; background:var(--console-panel-bg); display:flex; flex-direction:column; border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+
+  /* 头部（不变） */
+  .sidebar .head { padding:12px 12px 8px; display:flex; align-items:center; justify-content:space-between; }
+  .sidebar .head h2 { font-size:14px; font-weight:600; color:var(--cafe-black); }
+  .sidebar .head .actions { display:flex; align-items:center; gap:6px; }
+  .sidebar .head .btn-icon { padding:6px; border-radius:8px; color:var(--cafe-accent); background:none; border:none; cursor:pointer; display:flex; }
+  .sidebar .head .btn-icon:hover { background:var(--conn-amber-bg); }
+  .sidebar .head .btn-primary { font-size:12px; background:var(--cafe-accent); color:white; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-weight:500; }
+
+  /* 搜索（不变） */
+  .sidebar .search-wrap { padding:0 12px 8px; display:flex; align-items:center; gap:6px; }
+  .sidebar .search-wrap input { flex:1; min-width:0; border-radius:8px; background:var(--console-card-soft-bg); border:none; padding:6px 10px; font-size:12px; color:var(--cafe-secondary); outline:none; }
+  .sidebar .search-wrap input::placeholder { color:var(--cafe-muted); }
+  .sidebar .search-wrap input:focus { box-shadow:0 0 0 1px var(--console-input-stroke); }
+  .sidebar .search-wrap .btn-read { font-size:10px; color:var(--cafe-secondary); background:none; border:none; cursor:pointer; white-space:nowrap; padding:2px 6px; border-radius:4px; }
+
+  /* 标签筛选条（不变 —— 标签是筛选器，不是 Tab） */
+  .sidebar .tags { padding:0 12px 8px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .sidebar .tags button { font-size:10px; padding:2px 8px; border-radius:99px; border:1px solid transparent; color:var(--cafe-muted); background:none; cursor:pointer; display:flex; align-items:center; gap:3px; }
+  .sidebar .tags button:hover { background:var(--console-hover-bg); color:var(--cafe-secondary); }
+  .sidebar .tags button.on { border-color:var(--console-border-soft); background:var(--console-field-bg); color:var(--cafe-black); }
+  .sidebar .tags .icon-btn { padding:2px 6px; border-radius:99px; }
+  .sidebar .tags .tag-dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .sidebar .tags .clear-btn { margin-left:auto; border-radius:99px; color:var(--conn-red-text); font-size:10px; padding:2px 6px; background:none; border:none; cursor:pointer; }
+
+  /* 【改动】大厅：在 Tab 之上，独立于 Tab（与现有代码一致——大厅不归任何 Tab 管） */
+  .sidebar .lobby { margin:4px 8px 2px; padding:8px 10px; border-radius:12px; background:var(--console-active-bg); cursor:pointer; }
+  .sidebar .lobby .row1 { display:flex; align-items:center; gap:5px; }
+  .sidebar .lobby .hub-icon { color:var(--cafe-accent); flex-shrink:0; display:flex; }
+  .sidebar .lobby .title { font-size:12px; color:var(--cafe-black); font-weight:500; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sidebar .lobby .more-btn { font-size:14px; color:var(--cafe-muted); background:none; border:none; cursor:pointer; padding:0 4px; border-radius:4px; opacity:0; transition:opacity .15s; flex-shrink:0; }
+  .sidebar .lobby:hover .more-btn { opacity:1; }
+  .sidebar .lobby .row2 { display:flex; align-items:center; justify-content:space-between; margin-top:3px; }
+  .sidebar .lobby .avatars { display:flex; align-items:center; gap:3px; }
+  .sidebar .lobby .time { font-size:10px; color:var(--cafe-muted); }
+
+  /* 【改动】Tab 行：右侧放展开/收起图标按钮 */
+  /* v9: Tab 行 — 选中 tab 始终完整可见（横向滚动 + scroll-into-view） */
+  .sidebar .tabs-row { display:flex; align-items:stretch; padding:0 8px 0 12px; border-bottom:1px solid var(--cafe-subtle); gap:0; }
+  .sidebar .tabs { display:flex; gap:2px; flex:1; min-width:0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+  .sidebar .tabs::-webkit-scrollbar { display:none; }
+  .sidebar .tab { padding:6px 8px; font-size:11px; font-weight:500; color:var(--cafe-muted); cursor:pointer; border:none; border-bottom:2px solid transparent; background:none; white-space:nowrap; display:flex; align-items:center; gap:4px; border-radius:6px 6px 0 0; transition:all .12s; flex-shrink:0; scroll-snap-align:end; }
+  .sidebar .tab:hover { color:var(--cafe-secondary); background:var(--console-hover-bg); }
+  .sidebar .tab.on { color:var(--cafe-accent); border-bottom-color:var(--cafe-accent); font-weight:600; }
+  .sidebar .tab .count { font-size:10px; color:var(--cafe-muted); font-weight:400; }
+  .sidebar .tab.on .count { color:var(--cafe-accent); }
+  /* 溢出"更多"tab：当 tab 数超过容器宽度时出现，收起溢出的 tab */
+  .sidebar .tab-more { padding:6px 8px; font-size:11px; color:var(--cafe-muted); cursor:pointer; border:none; background:none; display:flex; align-items:center; gap:3px; border-radius:6px; flex-shrink:0; }
+  .sidebar .tab-more:hover { color:var(--cafe-secondary); background:var(--console-hover-bg); }
+  .sidebar .tab-more .has-overflow { width:4px; height:4px; border-radius:50%; background:var(--cafe-accent); }
+  /* 分隔线：把 tab 区和展开/折叠区视觉分开 */
+  .sidebar .tabs-row .divider { width:1px; align-self:center; height:16px; background:var(--cafe-subtle); margin:0 4px; flex-shrink:0; }
+  /* v7: 展开/收起只用图标，不要中文 */
+  .sidebar .tabs-row .ctrl { display:flex; align-items:center; gap:2px; flex-shrink:0; }
+  .sidebar .tabs-row .ctrl button { width:22px; height:22px; padding:0; display:flex; align-items:center; justify-content:center; border:none; background:none; cursor:pointer; border-radius:5px; color:var(--cafe-muted); transition:all .12s; }
+  .sidebar .tabs-row .ctrl button:hover { background:var(--console-hover-bg); color:var(--cafe-accent); }
+
+  /* v9: list 顶部加边距，第一个 item 不紧贴 tab 分割线 */
+  .sidebar .list { flex:1; overflow-y:auto; scrollbar-width: thin; scrollbar-color: transparent transparent; padding-top:6px; }
+  .sidebar .list:hover { scrollbar-color: var(--cafe-muted) transparent; }
+  .sidebar .list::-webkit-scrollbar { width: 6px; }
+  .sidebar .list::-webkit-scrollbar-track { background: transparent; }
+  .sidebar .list::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+  .sidebar .list:hover::-webkit-scrollbar-thumb { background: var(--cafe-muted); }
+
+  /* 项目分组标题（与现 SectionGroup 一致） */
+  .section-head { padding:6px 12px; display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .section-head:hover { background:var(--cafe-surface-elevated); }
+  .section-head .chevron { color:var(--cafe-muted); transition:transform .15s; display:flex; }
+  .section-head .chevron.open { transform:rotate(90deg); }
+  /* 【改动】项目路径：完整路径显示，超长中间省略 */
+  .section-head .sec-label { font-size:11px; font-weight:500; color:var(--cafe-secondary); flex:1; min-width:0; white-space:nowrap; overflow:hidden; }
+  .section-head .gov-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .section-head .sec-count { font-size:10px; color:var(--cafe-muted); margin-left:auto; flex-shrink:0; }
+  .section-head .sec-action { color:var(--cafe-muted); padding:2px; border-radius:4px; background:none; border:none; cursor:pointer; opacity:0; transition:opacity .15s; display:flex; }
+  .section-head:hover .sec-action { opacity:1; }
+  .section-head .sec-action:hover { color:var(--cafe-accent); }
+  /* 置顶项目名称染 accent */
+  .section-head.pinned-proj .sec-label { color:var(--cafe-accent); }
+
+  /* 对话条目 */
+  .item { position:relative; margin:0 8px; padding:7px 10px; border-radius:12px; cursor:pointer; transition:background .1s; }
+  .item:hover { background:var(--console-hover-bg); }
+  .item.active { background:var(--console-active-bg); }
+  .item.indented { padding-left:18px; }
+
+  .item .row1 { display:flex; align-items:center; gap:5px; }
+  .item .hub-icon { color:var(--cafe-accent); flex-shrink:0; display:flex; }
+  .item .bootcamp-icon { color:var(--conn-purple-text); flex-shrink:0; display:flex; }
+  .item .title { font-size:12px; color:var(--cafe-secondary); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.4; }
+  .item.active .title { color:var(--cafe-black); font-weight:500; }
+
+  .item .pin-mark { color:var(--cafe-accent); flex-shrink:0; display:flex; align-items:center; }
+  /* v7: 删除 proj-tag——标题后不显示文件夹信息，hover 显示完整信息（与现有逻辑一致） */
+
+  .item .more-btn { font-size:14px; color:var(--cafe-muted); background:none; border:none; cursor:pointer; padding:0 4px; border-radius:4px; opacity:0; transition:opacity .15s; flex-shrink:0; }
+  .item:hover .more-btn { opacity:1; }
+
+  .item .dropdown { position:absolute; right:8px; top:32px; z-index:50; min-width:148px; background:var(--cafe-surface-elevated); border:1px solid var(--cafe-subtle); border-radius:8px; padding:4px 0; box-shadow:0 4px 12px rgba(0,0,0,0.1); font-size:12px; }
+  .item .dropdown .menu-item { padding:6px 12px; display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--cafe-secondary); }
+  .item .dropdown .menu-item:hover { background:var(--console-hover-bg); }
+  .item .dropdown .menu-item.danger { color:var(--conn-red-text); }
+  .item .dropdown .sep { height:1px; background:var(--cafe-subtle); margin:4px 0; }
+  .item .dropdown .menu-item .mi-icon { font-size:12px; width:16px; text-align:center; display:flex; justify-content:center; }
+
+  .item .row2 { display:flex; align-items:center; justify-content:space-between; margin-top:3px; }
+  .item .row2 .left { display:flex; align-items:center; gap:4px; min-width:0; }
+  .item .row2 .right { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+
+  .avatar { width:16px; height:16px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:7px; font-weight:600; color:white; flex-shrink:0; }
+  .avatar.b { background:var(--cat-blue); }
+  .avatar.p { background:var(--cat-pink); }
+  .avatar.g { background:var(--cat-gold); }
+
+  .status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .status-dot.green { background:var(--conn-emerald-text); }
+  .status-dot.amber { background:var(--conn-amber-text); }
+
+  /* 【改动】标签展示重设计：纯色点（hover tooltip 显名），最多 3 个，超出 +N */
+  /* v8: 标签按钮高度对齐猫猫头像（16px） */
+  .label-dots { display:inline-flex; align-items:center; gap:3px; flex-shrink:0; height:16px; padding:0 5px; border-radius:99px; background:var(--console-card-soft-bg); cursor:default; transition:background .12s; }
+  .label-dots:hover { background:var(--console-hover-bg); }
+  .label-dots .label-ico { color:var(--cafe-muted); display:flex; flex-shrink:0; }
+  .label-dots:hover .label-ico { color:var(--cafe-secondary); }
+  .label-dots .ldot { width:6px; height:6px; border-radius:50%; border:1px solid rgba(255,255,255,0.4); flex-shrink:0; }
+  .label-dots .ldot-more { font-size:9px; color:var(--cafe-muted); margin-left:1px; }
+  /* v8: 收藏标记——被收藏的对话在所有 tab 显示 */
+  .fav-mark { color:var(--cat-gold); display:flex; flex-shrink:0; opacity:.9; }
+
+  .paw { font-size:10px; color:var(--cafe-muted); }
+  .no-cat { font-size:10px; color:var(--cafe-muted); }
+  .pref-ring { width:5px; height:5px; border-radius:50%; display:inline-block; margin-left:1px; }
+  .time { font-size:10px; color:var(--cafe-muted); }
+  .draft { font-size:10px; font-weight:500; color:var(--conn-red-text); }
+  .unread-badge { font-size:10px; font-weight:600; color:var(--conn-red-text); padding:0 4px; border-radius:99px; background:var(--conn-red-bg); }
+
+  .empty-tab { padding:24px 16px; text-align:center; font-size:11px; color:var(--cafe-muted); line-height:1.6; }
+
+  .trash { margin:auto 8px 8px; }
+  .trash button { width:100%; display:flex; align-items:center; gap:8px; height:36px; padding:0 10px; border-radius:12px; background:var(--console-card-soft-bg); border:none; font-size:12px; color:var(--cafe-secondary); cursor:pointer; }
+  .trash button:hover { color:var(--cafe-accent); }
+</style>
+</head>
+<body>
+
+<div style="max-width:1280px;margin:0 auto;padding:24px 32px 8px">
+  <h1 style="font-size:18px;font-weight:600;margin-bottom:4px">对话列表面板改版 v9</h1>
+  <p style="font-size:12px;color:var(--cafe-muted);line-height:1.6">
+    <strong>v9 本版调整</strong>：⑯ 选中 tab 始终完整可见（横向滚动 + scroll-into-view，tab 过多时选中的不裁切） ⑰ list 顶部加边距，第一个 item 不紧贴 tab 分割线<br>
+    <strong>v8 历史</strong>：⑬ 收藏标记全局显示 ⑭ 标签按钮高度对齐头像 ⑮ item hover 信息与代码一致<br>
+    <strong>v7 历史</strong>：⑨ 标题后不显示文件夹（hover 显示） ⑩ 标签合并单按钮 ⑪ 展开/折叠只图标 ⑫ Tab 去图标+顺序最近/项目/系统/收藏+去未读点<br>
+    <strong>v6 历史</strong>：⑦ 标签前加 tag 图标 ⑧ Tab 图标+文字、溢出收"更多"、分隔线区分展开/折叠<br>
+    <strong>v5 历史</strong>：① 大厅移到 Tab <strong>之上</strong>（与现有代码一致，不归任何 Tab） ② 项目 Tab 显示完整路径，超长中间 <code>...</code>  ③ 标签重设计为纯色点（hover 显名，最多3个+N） ④ 训练营对话在「最近」Tab 按时间排，带训练营小图标 ⑤ 展开/收起按钮移到 Tab 行右侧 ⑥ 展开/收起图标换业界通用 single chevron<br>
+    <strong>置顶逻辑</strong>：对话置顶=最近+当前Tab子目录双重置顶（pushpin 标识）；项目置顶=只项目Tab（项目名染 accent）
+  </p>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/></symbol>
+  <!-- 展开/收起：业界通用的单 chevron（VS Code / JetBrains / 文件管理器通用） -->
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 12 12"><path d="M4 2l4 4-4 4V2z" fill="currentColor"/></symbol>
+  <symbol id="i-lobby" viewBox="0 0 24 24"><path d="M12 3l-9 7h2v9h5v-6h4v6h5v-9h2z" fill="currentColor"/></symbol>
+  <!-- 训练营：毕业帽 -->
+  <symbol id="i-bootcamp" viewBox="0 0 24 24"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z" fill="currentColor"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="currentColor"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 2a.75.75 0 01.75.75v4.5h4.5a.75.75 0 010 1.5h-4.5v4.5a.75.75 0 01-1.5 0v-4.5h-4.5a.75.75 0 010-1.5h4.5v-4.5A.75.75 0 018 2z" fill="currentColor"/></symbol>
+  <symbol id="i-more" viewBox="0 0 16 16"><path d="M8 4a1 1 0 110-2 1 1 0 010 2zm0 5a1 1 0 110-2 1 1 0 010 2zm0 5a1 1 0 110-2 1 1 0 010 2z" fill="currentColor"/></symbol>
+  <!-- v6 新增：标签前缀图标（Lucide tag 形状） -->
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="7" cy="7" r="1.2" fill="currentColor"/></symbol>
+  <!-- v6 新增：Tab 图标（最近=时钟、系统=齿轮、项目=文件夹、收藏=星、更多=下拉） -->
+  <symbol id="i-tab-recent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  <symbol id="i-tab-system" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  <symbol id="i-tab-project" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  <symbol id="i-tab-star" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  <symbol id="i-tab-more" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  <!-- v8: 收藏标记（实心小星，与现有 StarIcon filled 一致） -->
+  <symbol id="i-fav" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/></symbol>
+</svg>
+
+<div class="layout">
+
+<!-- ====== A. 最近 Tab ====== -->
+<div class="panel-wrap">
+  <div class="panel-label">A. <span class="tag">最近 Tab</span></div>
+  <div class="sidebar">
+    <div class="head">
+      <h2>对话</h2>
+      <div class="actions">
+        <button class="btn-icon" title="猫猫训练营"><svg width="14" height="14"><use href="#i-lobby"/></svg></button>
+        <button class="btn-primary">+ 新对话</button>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <input placeholder="搜索对话、项目或 ID..." />
+      <button class="btn-read">全部已读</button>
+    </div>
+
+    <div class="tags">
+      <button class="on">未分类 (3)</button>
+      <button class="icon-btn">✨</button>
+      <button><span class="tag-dot" style="background:#7eb8da"></span>前端</button>
+      <button><span class="tag-dot" style="background:#d4a0b9"></span>设计</button>
+      <button class="clear-btn">✕</button>
+    </div>
+
+    <!-- 【改动】大厅：在 Tab 之上 -->
+    <div class="lobby">
+      <div class="row1">
+        <span class="hub-icon"><svg width="13" height="13"><use href="#i-lobby"/></svg></span>
+        <span class="title">🎉 大厅</span>
+        <button class="more-btn">⋯</button>
+      </div>
+      <div class="row2">
+        <div class="avatars">
+          <span class="avatar b">宪</span>
+          <span class="avatar p">砚</span>
+          <span class="avatar g">金</span>
+        </div>
+        <span class="time">公共入口</span>
+      </div>
+    </div>
+
+    <!-- 【v7 改动】Tab 行：纯文字、顺序 最近/项目/系统/收藏，溢出收"更多"，分隔线区分展开/折叠 -->
+    <div class="tabs-row">
+      <div class="tabs">
+        <button class="tab on">最近 <span class="count">8</span></button>
+        <button class="tab">项目 <span class="count">5</span></button>
+        <button class="tab">系统 <span class="count">2</span></button>
+        <button class="tab">收藏 <span class="count">3</span></button>
+        <button class="tab-more" title="更多对话类型">更多<svg width="10" height="10" style="opacity:.6"><use href="#i-chev-down"/></svg><span class="has-overflow"></span></button>
+      </div>
+      <div class="divider"></div>
+      <div class="ctrl">
+        <button title="全部展开"><svg width="14" height="14"><use href="#i-expand"/></svg></button>
+        <button title="全部折叠"><svg width="14" height="14"><use href="#i-collapse"/></svg></button>
+      </div>
+    </div>
+
+    <div class="list">
+      <!-- 最近 Tab：按时间倒序。置顶项用 pushpin，插时间线 -->
+      <div class="item active">
+        <div class="row1">
+          <span class="pin-mark" title="已置顶"><svg width="11" height="11"><use href="#i-pin"/></svg></span>
+          <span class="fav-mark" title="已收藏"><svg width="11" height="11"><use href="#i-fav"/></svg></span><span class="title" title="F190 视觉契约重构&#10;路径: clowder-ai">F190 视觉契约重构</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left">
+            <span class="avatar b">宪</span>
+            <span class="status-dot green"></span>
+            <!-- 标签：纯色点，hover tooltip 显名 -->
+            <span class="label-dots" title="标签: 前端, 重构">
+              <span class="label-ico"><svg width="11" height="11"><use href="#i-tag"/></svg></span>
+              <span class="ldot" style="background:#7eb8da" title="前端"></span>
+              <span class="ldot" style="background:#d4a0b9" title="重构"></span>
+            </span>
+            <span class="unread-badge">3</span>
+          </div>
+          <div class="right"><span class="time">3分钟前</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+          <span class="fav-mark" title="已收藏"><svg width="11" height="11"><use href="#i-fav"/></svg></span><span class="title" title="F237 注入追踪可观测性&#10;路径: clowder-ai">F237 注入追踪可观测性</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar p">砚</span><span class="status-dot green"></span></div>
+          <div class="right"><span class="time">25分钟前</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+          <span class="pin-mark" title="已置顶"><svg width="11" height="11"><use href="#i-pin"/></svg></span>
+          <span class="title" title="Redis 连接池优化&#10;路径: clowder-ai">Redis 连接池优化</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left">
+            <span class="avatar g">金</span>
+            <!-- 3个标签 + 超出显示 +N -->
+            <span class="label-dots" title="标签: 后端, 性能, Redis, 数据库, 运维">
+              <span class="label-ico"><svg width="11" height="11"><use href="#i-tag"/></svg></span>
+              <span class="ldot" style="background:#d4b483" title="后端"></span>
+              <span class="ldot" style="background:#38a169" title="性能"></span>
+              <span class="ldot" style="background:#8b5cf6" title="Redis"></span>
+              <span class="ldot-more">+2</span>
+            </span>
+          </div>
+          <div class="right"><span class="draft">[草稿]</span><span class="time">1小时前</span></div>
+        </div>
+      </div>
+
+      <!-- 【改动】训练营对话：在最近 Tab 按时间排，带训练营小图标 -->
+      <div class="item">
+        <div class="row1">
+          <span class="bootcamp-icon" title="训练营对话"><svg width="11" height="11"><use href="#i-bootcamp"/></svg></span>
+          <span class="title" title="训练营 Task 7: 实现侧栏改版&#10;路径: clowder-ai">训练营 Task 7: 实现侧栏改版</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar g">金</span></div>
+          <div class="right"><span class="time">2小时前</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+          <span class="title" title="Codex 流式认证修复&#10;路径: clowder-ai">Codex 流式认证修复</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span></div>
+          <div class="right"><span class="time">3小时前</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+          <span class="title" title="安全审计追踪日志系统设计&#10;路径: cat-cafe-docs">安全审计追踪日志系统设计</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span><span class="status-dot amber"></span></div>
+          <div class="right"><span class="time">8小时前</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+          <span class="title" title="移动端适配调研&#10;路径: clowder-ai">移动端适配调研</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar g">金</span></div>
+          <div class="right"><span class="time">2天前</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trash">
+      <button><span>🗑</span><span style="flex:1;text-align:left">回收站 (2)</span><span style="font-size:10px;color:var(--cafe-muted)">▼</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== B. 项目 Tab（完整路径 + 中间省略） ====== -->
+<div class="panel-wrap">
+  <div class="panel-label">B. <span class="tag">项目 Tab · 完整路径</span></div>
+  <div class="sidebar">
+    <div class="head">
+      <h2>对话</h2>
+      <div class="actions">
+        <button class="btn-icon"><svg width="14" height="14"><use href="#i-lobby"/></svg></button>
+        <button class="btn-primary">+ 新对话</button>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <input placeholder="搜索对话、项目或 ID..." />
+    </div>
+
+    <div class="tags">
+      <button class="on">未分类 (3)</button>
+      <button class="icon-btn">✨</button>
+      <button><span class="tag-dot" style="background:#7eb8da"></span>前端</button>
+    </div>
+
+    <!-- 大厅在 Tab 之上 -->
+    <div class="lobby">
+      <div class="row1">
+        <span class="hub-icon"><svg width="13" height="13"><use href="#i-lobby"/></svg></span>
+        <span class="title">🎉 大厅</span>
+        <button class="more-btn">⋯</button>
+      </div>
+      <div class="row2">
+        <div class="avatars"><span class="avatar b">宪</span><span class="avatar p">砚</span><span class="avatar g">金</span></div>
+        <span class="time">公共入口</span>
+      </div>
+    </div>
+
+    <div class="tabs-row">
+      <div class="tabs">
+        <button class="tab">最近 <span class="count">8</span></button>
+        <button class="tab on">项目 <span class="count">5</span></button>
+        <button class="tab">系统 <span class="count">2</span></button>
+        <button class="tab">收藏 <span class="count">3</span></button>
+        <button class="tab-more" title="更多对话类型">更多<svg width="10" height="10" style="opacity:.6"><use href="#i-chev-down"/></svg><span class="has-overflow"></span></button>
+      </div>
+      <div class="divider"></div>
+      <div class="ctrl">
+        <button title="全部展开"><svg width="14" height="14"><use href="#i-expand"/></svg></button>
+        <button title="全部折叠"><svg width="14" height="14"><use href="#i-collapse"/></svg></button>
+      </div>
+    </div>
+
+    <div class="list">
+      <!-- 置顶项目（染 accent） -->
+      <div class="section-head pinned-proj">
+        <span class="chevron open"><svg width="10" height="10"><use href="#i-chev"/></svg></span>
+        <span class="pin-mark" title="项目已置顶"><svg width="10" height="10"><use href="#i-pin"/></svg></span>
+        <!-- 完整路径，超长中间省略 -->
+        <span class="sec-label" title="D:\AI\TRUE_CAT\work\clowder-ai">D:\AI\TRUE_CAT\work\clowder-ai</span>
+        <span class="gov-dot" style="background:var(--conn-emerald-text)" title="治理正常"></span>
+        <span class="sec-count">4</span>
+        <button class="sec-action" title="新建对话"><svg width="11" height="11"><use href="#i-plus"/></svg></button>
+        <button class="sec-action" title="更多操作"><svg width="11" height="11"><use href="#i-more"/></svg></button>
+      </div>
+
+      <!-- 项目内：置顶对话排前（pushpin），其余字典序 -->
+      <div class="item indented">
+        <div class="row1">
+          <span class="pin-mark" title="已置顶"><svg width="11" height="11"><use href="#i-pin"/></svg></span>
+          <span class="title">F204 微信公众号插件</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span><span class="label-dots" title="前端"><span class="label-ico"><svg width="11" height="11"><use href="#i-tag"/></svg></span><span class="ldot" style="background:#7eb8da"></span></span></div>
+          <div class="right"><span class="time">10分钟前</span></div>
+        </div>
+      </div>
+
+      <div class="item indented">
+        <div class="row1">
+          <span class="title">Codex 流式认证修复</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span></div>
+          <div class="right"><span class="time">3小时前</span></div>
+        </div>
+      </div>
+
+      <div class="item indented">
+        <div class="row1">
+          <span class="fav-mark" title="已收藏"><svg width="11" height="11"><use href="#i-fav"/></svg></span><span class="title" title="F237 注入追踪可观测性&#10;路径: clowder-ai">F237 注入追踪可观测性</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar p">砚</span><span class="status-dot green"></span></div>
+          <div class="right"><span class="time">25分钟前</span></div>
+        </div>
+      </div>
+
+      <!-- 超长路径项目：中间省略 -->
+      <div class="section-head">
+        <span class="chevron open"><svg width="10" height="10"><use href="#i-chev"/></svg></span>
+        <!-- 完整路径超长，中间 ... 显示 -->
+        <span class="sec-label" title="D:\docs\projects\archive\2024\cat-cafe-docs">D:\docs\...ve\cat-cafe-docs</span>
+        <span class="gov-dot" style="background:var(--conn-amber-text)" title="治理过期"></span>
+        <span class="sec-count">2</span>
+        <button class="sec-action" title="更多操作"><svg width="11" height="11"><use href="#i-more"/></svg></button>
+        <button class="sec-action" title="固定项目"><svg width="10" height="10"><use href="#i-pin"/></svg></button>
+      </div>
+
+      <div class="item indented">
+        <div class="row1">
+          <span class="title">安全审计追踪日志系统设计</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span></div>
+          <div class="right"><span class="time">8小时前</span></div>
+        </div>
+      </div>
+
+      <div class="item indented">
+        <div class="row1">
+          <span class="title">用户权限重构方案讨论</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span><span class="avatar p">砚</span></div>
+          <div class="right"><span class="time">昨天</span></div>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <span class="chevron"><svg width="10" height="10"><use href="#i-chev"/></svg></span>
+        <span class="sec-label" style="color:var(--cafe-muted)">其他项目 (1)</span>
+        <span class="sec-count">1</span>
+      </div>
+    </div>
+
+    <div class="trash">
+      <button><span>🗑</span><span style="flex:1;text-align:left">回收站 (2)</span><span style="font-size:10px;color:var(--cafe-muted)">▼</span></button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- 第二行：系统 Tab + 收藏 Tab + 菜单展开 -->
+<div class="layout" style="padding-top:0">
+
+<!-- ====== C. 系统 Tab（字典序） ====== -->
+<div class="panel-wrap">
+  <div class="panel-label">C. <span class="tag">系统 Tab</span></div>
+  <div class="sidebar">
+    <div class="head">
+      <h2>对话</h2>
+      <div class="actions">
+        <button class="btn-icon"><svg width="14" height="14"><use href="#i-lobby"/></svg></button>
+        <button class="btn-primary">+ 新对话</button>
+      </div>
+    </div>
+
+    <div class="search-wrap"><input placeholder="搜索对话、项目或 ID..." /></div>
+    <div class="tags">
+      <button class="on">未分类 (3)</button>
+      <button class="icon-btn">✨</button>
+      <button><span class="tag-dot" style="background:#7eb8da"></span>前端</button>
+    </div>
+
+    <div class="lobby">
+      <div class="row1">
+        <span class="hub-icon"><svg width="13" height="13"><use href="#i-lobby"/></svg></span>
+        <span class="title">🎉 大厅</span>
+        <button class="more-btn">⋯</button>
+      </div>
+      <div class="row2">
+        <div class="avatars"><span class="avatar b">宪</span><span class="avatar p">砚</span></div>
+        <span class="time">公共入口</span>
+      </div>
+    </div>
+
+    <div class="tabs-row">
+      <div class="tabs">
+        <button class="tab">最近 <span class="count">8</span></button>
+        <button class="tab">项目 <span class="count">5</span></button>
+        <button class="tab on">系统 <span class="count">2</span></button>
+        <button class="tab">收藏 <span class="count">3</span></button>
+        <button class="tab-more" title="更多对话类型">更多<svg width="10" height="10" style="opacity:.6"><use href="#i-chev-down"/></svg><span class="has-overflow"></span></button>
+      </div>
+      <div class="divider"></div>
+      <div class="ctrl">
+        <button title="全部展开"><svg width="14" height="14"><use href="#i-expand"/></svg></button>
+        <button title="全部折叠"><svg width="14" height="14"><use href="#i-collapse"/></svg></button>
+      </div>
+    </div>
+
+    <div class="list">
+      <!-- 置顶系统对话排前 -->
+      <div class="item active">
+        <div class="row1">
+          <span class="pin-mark" title="已置顶"><svg width="11" height="11"><use href="#i-pin"/></svg></span>
+          <span class="hub-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18L19.5 8 12 11.82 4.5 8 12 4.18z"/></svg></span>
+          <span class="title">Eval 任务调度器</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar p">砚</span><span class="status-dot amber"></span></div>
+          <div class="right"><span class="time">15分钟前</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+          <span class="hub-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18L19.5 8 12 11.82 4.5 8 12 4.18z"/></svg></span>
+          <span class="title">微信连接器中枢</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span><span class="status-dot green"></span><span class="unread-badge">12</span></div>
+          <div class="right"><span class="time">2分钟前</span></div>
+        </div>
+      </div>
+
+      <div class="empty-tab">系统对话由平台维护</div>
+    </div>
+
+    <div class="trash">
+      <button><span>🗑</span><span style="flex:1;text-align:left">回收站 (2)</span><span style="font-size:10px;color:var(--cafe-muted)">▼</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== D. 收藏 Tab（字典序） ====== -->
+<div class="panel-wrap">
+  <div class="panel-label">D. <span class="tag">收藏 Tab</span></div>
+  <div class="sidebar">
+    <div class="head">
+      <h2>对话</h2>
+      <div class="actions">
+        <button class="btn-icon"><svg width="14" height="14"><use href="#i-lobby"/></svg></button>
+        <button class="btn-primary">+ 新对话</button>
+      </div>
+    </div>
+
+    <div class="search-wrap"><input placeholder="搜索对话、项目或 ID..." /></div>
+    <div class="tags">
+      <button class="on">未分类 (3)</button>
+      <button class="icon-btn">✨</button>
+      <button><span class="tag-dot" style="background:#7eb8da"></span>前端</button>
+    </div>
+
+    <div class="lobby">
+      <div class="row1">
+        <span class="hub-icon"><svg width="13" height="13"><use href="#i-lobby"/></svg></span>
+        <span class="title">🎉 大厅</span>
+        <button class="more-btn">⋯</button>
+      </div>
+      <div class="row2">
+        <div class="avatars"><span class="avatar b">宪</span><span class="avatar p">砚</span></div>
+        <span class="time">公共入口</span>
+      </div>
+    </div>
+
+    <div class="tabs-row">
+      <div class="tabs">
+        <button class="tab">最近 <span class="count">8</span></button>
+        <button class="tab">项目 <span class="count">5</span></button>
+        <button class="tab">系统 <span class="count">2</span></button>
+        <button class="tab on">收藏 <span class="count">3</span></button>
+        <button class="tab-more" title="更多对话类型">更多<svg width="10" height="10" style="opacity:.6"><use href="#i-chev-down"/></svg><span class="has-overflow"></span></button>
+      </div>
+      <div class="divider"></div>
+      <div class="ctrl">
+        <button title="全部展开"><svg width="14" height="14"><use href="#i-expand"/></svg></button>
+        <button title="全部折叠"><svg width="14" height="14"><use href="#i-collapse"/></svg></button>
+      </div>
+    </div>
+
+    <div class="list">
+      <!-- 置顶收藏排前 -->
+      <div class="item active">
+        <div class="row1">
+          <span class="pin-mark" title="已置顶"><svg width="11" height="11"><use href="#i-pin"/></svg></span>
+                    <span class="fav-mark" title="已收藏"><svg width="11" height="11"><use href="#i-fav"/></svg></span><span class="title" title="F190 视觉契约重构&#10;路径: clowder-ai">F190 视觉契约重构</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span><span class="status-dot green"></span><span class="unread-badge">3</span></div>
+          <div class="right"><span class="time">3分钟前</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+                    <span class="fav-mark" title="已收藏"><svg width="11" height="11"><use href="#i-fav"/></svg></span><span class="title" title="架构决策记录合集&#10;路径: cat-cafe-docs">架构决策记录合集</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar p">砚</span></div>
+          <div class="right"><span class="time">昨天</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+                    <span class="fav-mark" title="已收藏"><svg width="11" height="11"><use href="#i-fav"/></svg></span><span class="title" title="家规与决策漏斗&#10;路径: cat-cafe-docs">家规与决策漏斗</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span><span class="avatar g">金</span></div>
+          <div class="right"><span class="time">3天前</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trash">
+      <button><span>🗑</span><span style="flex:1;text-align:left">回收站 (2)</span><span style="font-size:10px;color:var(--cafe-muted)">▼</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== E. 最近 Tab + 菜单展开 ====== -->
+<div class="panel-wrap">
+  <div class="panel-label">E. <span class="tag">最近 Tab · 菜单展开</span></div>
+  <div class="sidebar">
+    <div class="head">
+      <h2>对话</h2>
+      <div class="actions">
+        <button class="btn-icon"><svg width="14" height="14"><use href="#i-lobby"/></svg></button>
+        <button class="btn-primary">+ 新对话</button>
+      </div>
+    </div>
+
+    <div class="search-wrap"><input placeholder="搜索对话、项目或 ID..." /></div>
+    <div class="tags">
+      <button class="on">未分类 (3)</button>
+      <button class="icon-btn">✨</button>
+      <button><span class="tag-dot" style="background:#7eb8da"></span>前端</button>
+    </div>
+
+    <div class="lobby">
+      <div class="row1">
+        <span class="hub-icon"><svg width="13" height="13"><use href="#i-lobby"/></svg></span>
+        <span class="title">🎉 大厅</span>
+        <button class="more-btn">⋯</button>
+      </div>
+      <div class="row2">
+        <div class="avatars"><span class="avatar b">宪</span><span class="avatar p">砚</span></div>
+        <span class="time">公共入口</span>
+      </div>
+    </div>
+
+    <div class="tabs-row">
+      <div class="tabs">
+        <button class="tab on">最近 <span class="count">8</span></button>
+        <button class="tab">项目 <span class="count">5</span></button>
+        <button class="tab">系统 <span class="count">2</span></button>
+        <button class="tab">收藏 <span class="count">3</span></button>
+        <button class="tab-more" title="更多对话类型">更多<svg width="10" height="10" style="opacity:.6"><use href="#i-chev-down"/></svg><span class="has-overflow"></span></button>
+      </div>
+      <div class="divider"></div>
+      <div class="ctrl">
+        <button title="全部展开"><svg width="14" height="14"><use href="#i-expand"/></svg></button>
+        <button title="全部折叠"><svg width="14" height="14"><use href="#i-collapse"/></svg></button>
+      </div>
+    </div>
+
+    <div class="list">
+      <div class="item active">
+        <div class="row1">
+          <span class="pin-mark" title="已置顶"><svg width="11" height="11"><use href="#i-pin"/></svg></span>
+          <span class="fav-mark" title="已收藏"><svg width="11" height="11"><use href="#i-fav"/></svg></span><span class="title" title="F190 视觉契约重构&#10;路径: clowder-ai">F190 视觉契约重构</span>
+          <button class="more-btn" style="opacity:1">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar b">宪</span><span class="status-dot green"></span><span class="unread-badge">3</span></div>
+          <div class="right"><span class="time">3分钟前</span></div>
+        </div>
+        <div class="dropdown">
+          <div class="menu-item"><span class="mi-icon">📌</span>取消置顶</div>
+          <div class="menu-item"><span class="mi-icon">⭐</span>取消收藏</div>
+          <div class="sep"></div>
+          <div class="menu-item"><span class="mi-icon">✏️</span>重命名对话</div>
+          <div class="menu-item"><span class="mi-icon">🐱</span>设置默认猫猫</div>
+          <div class="menu-item"><span class="mi-icon">🏷️</span>标签管理</div>
+          <div class="sep"></div>
+          <div class="menu-item"><span class="mi-icon">📋</span>导出对话</div>
+          <div class="menu-item"><span class="mi-icon">🎭</span>回放剧场</div>
+          <div class="sep"></div>
+          <div class="menu-item danger"><span class="mi-icon">🗑️</span>删除对话</div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+          <span class="fav-mark" title="已收藏"><svg width="11" height="11"><use href="#i-fav"/></svg></span><span class="title" title="F237 注入追踪可观测性&#10;路径: clowder-ai">F237 注入追踪可观测性</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar p">砚</span><span class="status-dot green"></span></div>
+          <div class="right"><span class="time">25分钟前</span></div>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="row1">
+          <span class="pin-mark" title="已置顶"><svg width="11" height="11"><use href="#i-pin"/></svg></span>
+          <span class="title" title="Redis 连接池优化&#10;路径: clowder-ai">Redis 连接池优化</span>
+          <button class="more-btn">⋯</button>
+        </div>
+        <div class="row2">
+          <div class="left"><span class="avatar g">金</span></div>
+          <div class="right"><span class="draft">[草稿]</span><span class="time">1小时前</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trash">
+      <button><span>🗑</span><span style="flex:1;text-align:left">回收站 (2)</span><span style="font-size:10px;color:var(--cafe-muted)">▼</span></button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div style="max-width:1280px;margin:0 auto;padding:8px 32px 48px">
+  <div style="background:white;border-radius:12px;padding:18px 22px;box-shadow:0 1px 4px rgba(0,0,0,0.05);font-size:12px;line-height:1.7;color:var(--cafe-secondary)">
+    <div style="font-weight:600;color:var(--cafe-black);margin-bottom:8px">v9 调整说明</div>
+
+    <div style="margin-bottom:6px"><strong style="color:var(--cafe-accent)">⑯ 选中 tab 始终完整可见</strong>：tab 过多时，<code>.tabs</code> 改为<strong>横向滚动</strong>（<code>overflow-x:auto</code>，滚动条隐藏）。选中的 tab 用 <code>scrollIntoView({inline:'nearest'})</code> 自动滚到可见区——无论选中的是「收藏」还是其他，都完整显示不被裁切。落地到 React 时用 <code>useEffect</code> 监听 activeTab 变化 + tab ref 调 <code>scrollIntoView</code>。点击 tab 后 <code>requestAnimationFrame</code> 触发滚动，保证 class 更新后再滚。</div>
+
+    <div style="margin-bottom:6px"><strong style="color:var(--cafe-accent)">⑰ list 顶部加边距</strong>：<code>.list</code> 加 <code>padding-top:6px</code>，第一个 item 不再紧贴 tab 行的 border-bottom 分割线。</div>
+
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--cafe-subtle);color:var(--cafe-muted);font-size:11px">
+      <strong>v8 历史（⑬-⑮）</strong>：收藏标记全局显示 / 标签按钮对齐头像 / item hover 信息与代码一致。
+    </div>
+
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--cafe-subtle);color:var(--cafe-muted);font-size:11px">
+      <strong>v7 历史（⑨-⑫）</strong>：标题后不显示文件夹 / 标签合并单按钮 / 展开/折叠只图标 / Tab 去图标+顺序+去未读点。
+    </div>
+
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--cafe-subtle);color:var(--cafe-muted);font-size:11px">
+      <strong>v6 历史（⑦-⑧）</strong>：标签前加 tag 图标 / Tab 图标+文字+溢出更多+分隔线。
+    </div>
+
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--cafe-subtle);color:var(--cafe-muted);font-size:11px">
+      <strong>v5 历史（①-⑥）</strong>：大厅在 Tab 之上 / 项目完整路径 / 标签色点 / 训练营最近 Tab / 展开折叠右侧 / 单 chevron。
+    </div>
+
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--cafe-subtle);color:var(--cafe-muted)">
+      <strong>置顶逻辑不变</strong>：对话置顶=最近 Tab + 当前 Tab 子目录双重置顶（pushpin 标识）；项目置顶=只项目 Tab（项目名染 accent + pushpin）。排序：最近按时间，其他 Tab 字典序。
+    </div>
+  </div>
+</div>
+
+<script>
+// v9: 选中 tab 始终完整可见——点击 tab 后滚到可见区
+// 落地到 React 时用 useEffect + ref.scrollIntoView({inline:'nearest',block:'nearest'})
+document.querySelectorAll('.sidebar').forEach(sb => {
+  const tabs = sb.querySelector('.tabs');
+  if (!tabs) return;
+  // 初始：把当前 on 的 tab 滚到可见
+  const scrollActiveIntoView = () => {
+    const on = tabs.querySelector('.tab.on');
+    if (on) on.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+  };
+  scrollActiveIntoView();
+  tabs.addEventListener('click', e => {
+    const t = e.target.closest('.tab');
+    if (!t) return;
+    tabs.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+    // 等 class 更新后再滚
+    requestAnimationFrame(scrollActiveIntoView);
+  });
+});
+</script>
+
+</body>
+</html>
