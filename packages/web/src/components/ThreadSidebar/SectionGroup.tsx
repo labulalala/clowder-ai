@@ -114,60 +114,45 @@ export function SectionGroup({
   const govDot = governanceStatus ? GOV_STATUS_DOT[governanceStatus] : undefined;
 
   return (
-    <div className="mt-1 relative group/section">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full text-left px-3 py-1.5 flex items-center gap-1.5 hover:bg-cafe-surface-elevated transition-colors"
-        title={projectPath && projectPath !== 'default' ? projectPath : undefined}
-      >
-        {/* Chevron */}
-        <svg
-          aria-hidden="true"
-          className={`w-3 h-3 text-cafe-muted transition-transform flex-shrink-0 ${isCollapsed ? '' : 'rotate-90'}`}
-          viewBox="0 0 12 12"
-          fill="currentColor"
-        >
-          <path d="M4 2l4 4-4 4V2z" />
-        </svg>
-
-        {/* Section icon */}
-        {iconPath && (
-          <svg
-            aria-hidden="true"
-            className={`w-3 h-3 flex-shrink-0 ${iconColor}`}
-            viewBox="0 0 16 16"
-            fill="currentColor"
-          >
-            <path d={iconPath} />
-          </svg>
-        )}
-
-        {/* Label (inline rename or static) */}
+    <div className="relative mt-1 px-2 group/section">
+      <div className="flex w-full items-center gap-1 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-cafe-surface-elevated">
         {isRenaming ? (
-          <input
-            ref={inputRef}
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onClick={stopButton}
-            onCompositionStart={ime.onCompositionStart}
-            onCompositionEnd={ime.onCompositionEnd}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !ime.isComposing()) {
-                e.preventDefault();
-                submitRename();
-              }
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                setIsRenaming(false);
-              }
-            }}
-            onBlur={submitRename}
-            maxLength={100}
-            className="text-xs font-medium px-1 py-0 rounded border border-cafe-subtle focus:outline-none focus:border-cafe-accent flex-1 min-w-0"
-          />
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <SectionChevron isCollapsed={isCollapsed} />
+            {iconPath && <SectionIcon iconPath={iconPath} iconColor={iconColor} />}
+            <input
+              ref={inputRef}
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onClick={stopButton}
+              onCompositionStart={ime.onCompositionStart}
+              onCompositionEnd={ime.onCompositionEnd}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !ime.isComposing()) {
+                  e.preventDefault();
+                  submitRename();
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setIsRenaming(false);
+                }
+              }}
+              onBlur={submitRename}
+              maxLength={100}
+              className="min-w-0 flex-1 rounded border border-cafe-subtle px-1 py-0 text-xs font-medium focus:border-cafe-accent focus:outline-none"
+            />
+          </div>
         ) : (
-          <span className="text-xs font-medium text-cafe-secondary truncate">{label}</span>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+            title={projectPath && projectPath !== 'default' ? projectPath : undefined}
+          >
+            <SectionChevron isCollapsed={isCollapsed} />
+            {iconPath && <SectionIcon iconPath={iconPath} iconColor={iconColor} />}
+            <span className="min-w-0 flex-1 truncate text-xs font-medium text-cafe-secondary">{label}</span>
+          </button>
         )}
 
         {/* Governance dot */}
@@ -220,7 +205,7 @@ export function SectionGroup({
             <path d={ICON_PATHS.pin} />
           </ActionButton>
         )}
-      </button>
+      </div>
 
       {/* F095 Phase F: Context menu dropdown */}
       {showMenu && (
@@ -258,6 +243,27 @@ export function SectionGroup({
   );
 }
 
+function SectionChevron({ isCollapsed }: { isCollapsed: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={`h-3 w-3 flex-shrink-0 text-cafe-muted transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+      viewBox="0 0 12 12"
+      fill="currentColor"
+    >
+      <path d="M4 2l4 4-4 4V2z" />
+    </svg>
+  );
+}
+
+function SectionIcon({ iconPath, iconColor }: { iconPath: string; iconColor?: string }) {
+  return (
+    <svg aria-hidden="true" className={`h-3 w-3 flex-shrink-0 ${iconColor}`} viewBox="0 0 16 16" fill="currentColor">
+      <path d={iconPath} />
+    </svg>
+  );
+}
+
 /** Small icon button used for pin / quick-create / menu actions. */
 function ActionButton({
   onClick,
@@ -273,9 +279,8 @@ function ActionButton({
   children: React.ReactNode;
 }) {
   return (
-    <span
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={onClick}
       onKeyDown={(e) => {
         if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
@@ -284,14 +289,14 @@ function ActionButton({
           onClick(e as unknown as React.MouseEvent);
         }
       }}
-      className={`ml-0.5 flex-shrink-0 cursor-pointer transition-all text-cafe-muted hover:text-cafe-secondary ${className ?? ''}`}
+      className={`ml-0.5 flex-shrink-0 transition-all text-cafe-muted hover:text-cafe-secondary ${className ?? ''}`}
       title={title}
       data-testid={testId}
     >
       <svg aria-hidden="true" className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
         {children}
       </svg>
-    </span>
+    </button>
   );
 }
 
