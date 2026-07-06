@@ -158,15 +158,24 @@ describe('ThreadSidebar scroll memory', () => {
   }
 
   function expandAll(rootEl: HTMLElement) {
-    // v11: expand/collapse buttons only render on the project tab. Switch there first.
+    // v12: variable toggle button only renders on the project tab. Switch there first.
     const projectTab = rootEl.querySelector('[data-testid="sidebar-tab-project"]') as HTMLButtonElement | null;
     if (projectTab) {
       act(() => {
         projectTab.click();
       });
     }
+    // Variable button: allCollapsed → "expand-all-btn", else → "collapse-all-btn".
+    // To guarantee all-expanded end state regardless of initial state: first collapse all
+    // (so we reach a known allCollapsed=true), then click expand-all.
+    const collapseBtn = rootEl.querySelector('[data-testid="collapse-all-btn"]') as HTMLButtonElement | null;
+    if (collapseBtn) {
+      act(() => {
+        collapseBtn.click();
+      });
+    }
     const expandBtn = rootEl.querySelector('[data-testid="expand-all-btn"]') as HTMLButtonElement | null;
-    if (!expandBtn) throw new Error('expand-all button not found');
+    if (!expandBtn) throw new Error('expand-all button not found after collapse');
     act(() => {
       expandBtn.click();
     });

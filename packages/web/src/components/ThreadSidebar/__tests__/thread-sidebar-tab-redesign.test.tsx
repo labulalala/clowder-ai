@@ -103,21 +103,28 @@ describe('ThreadSidebar v9 tab redesign', () => {
     expect(visibleThreadIds(harness.container)).toEqual(['default', 'favorite']);
   });
 
-  it('shows icon-only expand controls only on the project tab and gives the list top breathing room', async () => {
+  it('shows a variable expand/collapse toggle in a project toolbar only on the project tab', async () => {
     await harness.render();
 
-    // Default (recent) tab is flat — no collapsible sections, so no expand/collapse buttons.
-    expect(harness.container.querySelector('[data-testid="expand-all-btn"]')).toBeNull();
-    expect(harness.container.querySelector('[data-testid="collapse-all-btn"]')).toBeNull();
+    // Default (recent) tab is flat — no project toolbar.
+    expect(harness.container.querySelector('[data-testid="sidebar-project-toolbar"]')).toBeNull();
 
-    // Project tab has collapsible project groups → buttons appear, icon-only.
+    // Project tab has collapsible project groups → toolbar with a single variable button.
     await clickTab(harness.container, 'project', harness.flush);
+    const toolbar = harness.container.querySelector('[data-testid="sidebar-project-toolbar"]');
+    expect(toolbar).not.toBeNull();
+    expect(toolbar?.textContent).toContain('项目 ·');
+
+    // Variable button: exactly one of expand-all-btn / collapse-all-btn is present.
     const expand = harness.container.querySelector('[data-testid="expand-all-btn"]');
     const collapse = harness.container.querySelector('[data-testid="collapse-all-btn"]');
-    expect(expand?.textContent?.trim()).toBe('');
-    expect(collapse?.textContent?.trim()).toBe('');
-    expect(expand?.getAttribute('aria-label')).toBe('全部展开');
-    expect(collapse?.getAttribute('aria-label')).toBe('全部折叠');
+    const presentCount = (expand ? 1 : 0) + (collapse ? 1 : 0);
+    expect(presentCount).toBe(1);
+    const btn = (expand ?? collapse) as HTMLButtonElement | null;
+    // Button carries a text label (not icon-only) — co-creator asked for visible affordance.
+    expect(btn?.textContent?.trim().length).toBeGreaterThan(0);
+    const label = btn?.getAttribute('aria-label') ?? '';
+    expect(label === '展开全部项目' || label === '折叠全部项目').toBe(true);
 
     const tabContent = harness.container.querySelector('[data-testid="sidebar-tab-content"]');
     expect(tabContent?.className).toContain('pt-1.5');

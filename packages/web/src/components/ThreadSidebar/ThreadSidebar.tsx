@@ -744,7 +744,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
   const { onScroll: handleScrollAnchor } = useScrollAnchor(scrollContainerRef, projectThreadGroups);
 
   // F095: Collapse state with localStorage persistence + search/active auto-expand
-  const { isCollapsed, toggleGroup, expandAll, collapseAll } = useCollapseState({
+  const { isCollapsed, toggleGroup, expandAll, collapseAll, allCollapsed } = useCollapseState({
     threadGroups: projectThreadGroups,
     searchQuery: normalizedQuery,
     currentThreadId,
@@ -798,34 +798,6 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
         <div className="px-3 pt-3 pb-2 flex items-center justify-between">
           <span className="text-sm font-semibold text-cafe-black">对话</span>
           <div className="flex items-center gap-1.5">
-            {activeTabContent.kind === 'project' && (
-              <>
-                <button
-                  type="button"
-                  onClick={expandAll}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
-                  data-testid="expand-all-btn"
-                  aria-label="全部展开"
-                  title="全部展开"
-                >
-                  <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={collapseAll}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
-                  data-testid="collapse-all-btn"
-                  aria-label="全部折叠"
-                  title="全部折叠"
-                >
-                  <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M18 15l-6-6-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </>
-            )}
             <button
               type="button"
               onClick={() => setShowBootcampList(true)}
@@ -943,6 +915,34 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
           )}
 
           <div className="pt-1.5" data-testid="sidebar-tab-content">
+            {activeTabContent.kind === 'project' && threadGroups.length > 0 && (
+              <div className="flex items-center justify-between px-3 pb-1.5" data-testid="sidebar-project-toolbar">
+                <span className="text-micro text-cafe-muted">项目 · {threadGroups.length}</span>
+                <button
+                  type="button"
+                  onClick={allCollapsed ? expandAll : collapseAll}
+                  className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-micro text-cafe-secondary transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                  data-testid={allCollapsed ? 'expand-all-btn' : 'collapse-all-btn'}
+                  aria-label={allCollapsed ? '展开全部项目' : '折叠全部项目'}
+                  title={allCollapsed ? '展开全部' : '折叠全部'}
+                >
+                  <svg
+                    aria-hidden="true"
+                    className="h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    {allCollapsed ? <path d="M6 9l6 6 6-6" /> : <path d="M18 15l-6-6-6 6" />}
+                  </svg>
+                  <span>{allCollapsed ? '展开全部' : '折叠全部'}</span>
+                </button>
+              </div>
+            )}
+
             {activeTabContent.kind === 'flat' && activeTabContent.threads.map((t) => renderThreadItem(t))}
 
             {activeTabContent.kind === 'project' &&
