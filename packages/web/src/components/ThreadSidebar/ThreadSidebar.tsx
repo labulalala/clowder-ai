@@ -798,6 +798,34 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
         <div className="px-3 pt-3 pb-2 flex items-center justify-between">
           <span className="text-sm font-semibold text-cafe-black">对话</span>
           <div className="flex items-center gap-1.5">
+            {activeTabContent.kind === 'project' && (
+              <>
+                <button
+                  type="button"
+                  onClick={expandAll}
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                  data-testid="expand-all-btn"
+                  aria-label="全部展开"
+                  title="全部展开"
+                >
+                  <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={collapseAll}
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                  data-testid="collapse-all-btn"
+                  aria-label="全部折叠"
+                  title="全部折叠"
+                >
+                  <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M18 15l-6-6-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={() => setShowBootcampList(true)}
@@ -911,39 +939,6 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                   </button>
                 ))}
               </div>
-              {activeTabContent.kind === 'project' && (
-                <>
-                  <div
-                    className="my-auto h-4 w-px flex-shrink-0 bg-cafe-subtle"
-                    aria-hidden="true"
-                    data-testid="sidebar-tabs-divider"
-                  />
-                  <div className="flex flex-shrink-0 items-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={expandAll}
-                      className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
-                      data-testid="expand-all-btn"
-                      aria-label="全部展开"
-                    >
-                      <svg aria-hidden="true" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={collapseAll}
-                      className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
-                      data-testid="collapse-all-btn"
-                      aria-label="全部折叠"
-                    >
-                      <svg aria-hidden="true" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M18 15l-6-6-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </div>
-                </>
-              )}
             </div>
           )}
 

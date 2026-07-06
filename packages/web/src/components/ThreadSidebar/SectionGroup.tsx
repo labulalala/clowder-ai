@@ -1,32 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useIMEGuard } from '@/hooks/useIMEGuard';
 
-/**
- * Middle-ellipsis for long paths (demo spec, sidebar-proposals.html line 501):
- *   D:\docs\projects\archive\cat-cafe-docs  →  D:\docs\...cafe-docs
- * Keeps the first segment (drive/root + first dir) and the last segment (leaf),
- * which is what humans need to disambiguate projects. Non-path labels fall back
- * to tail truncation.
- */
-function middleEllipsis(label: string, maxLen = 24): string {
-  if (label.length <= maxLen) return label;
-  const sepIdx = label.search(/[\\/]/);
-  if (sepIdx < 0) return label; // not a path — let CSS truncate the tail
-  const firstSep = label.search(/[\\/]/);
-  const lastSep = Math.max(label.lastIndexOf('\\'), label.lastIndexOf('/'));
-  if (lastSep <= firstSep) return label; // only one segment
-  const head = label.slice(0, firstSep + 1);
-  const tail = label.slice(lastSep + 1);
-  const budget = maxLen - head.length - tail.length - 3; // 3 for "..."
-  if (budget <= 0) {
-    // not enough room — keep head + ... + tail with tail truncated
-    return `${head}...${tail.slice(-Math.max(4, maxLen - head.length - 6))}`;
-  }
-  // include a few chars after head for context (like demo: D:\docs\...ve\cat-cafe-docs)
-  const extra = label.slice(firstSep + 1, firstSep + 1 + budget);
-  return `${head}${extra}...${tail}`;
-}
-
 /** F070: governance status dot colors */
 const GOV_STATUS_DOT: Record<string, { color: string; title: string }> = {
   healthy: { color: 'bg-conn-emerald-text', title: '治理正常' },
@@ -35,9 +9,8 @@ const GOV_STATUS_DOT: Record<string, { color: string; title: string }> = {
   'never-synced': { color: 'bg-conn-slate-ring', title: '未同步治理' },
 };
 
-/** Section icon SVG paths (extracted to reduce JSX noise) */
+/** Section icon SVG paths (extracted to reduce JSX noise). pin uses stroke style — see PinSectionIcon. */
 const ICON_PATHS: Record<string, string> = {
-  pin: 'M4.456 2.013a.75.75 0 011.06-.034l6.5 6a.75.75 0 01-.034 1.06l-1.99 1.838.637 3.22a.75.75 0 01-1.196.693L6.5 12.526l-2.933 2.264a.75.75 0 01-1.196-.693l.637-3.22-1.99-1.838a.75.75 0 01-.034-1.06l5.472-5.966z',
   star: 'M8 1.5l2.09 4.26 4.71.68-3.41 3.32.8 4.69L8 12.26l-4.19 2.19.8-4.69L1.2 6.44l4.71-.68L8 1.5z',
   clock:
     'M8 1a7 7 0 110 14A7 7 0 018 1zm0 1.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM8 4a.75.75 0 01.75.75v2.69l1.78 1.78a.75.75 0 01-1.06 1.06l-2-2A.75.75 0 017.25 8V4.75A.75.75 0 018 4z',
@@ -177,11 +150,8 @@ export function SectionGroup({
           >
             <SectionChevron isCollapsed={isCollapsed} />
             {iconPath && <SectionIcon iconPath={iconPath} iconColor={iconColor} />}
-            {(() => {
-              const isPath = !!projectPath && projectPath !== 'default' && /[\\/]/.test(label);
-              const display = isPath ? middleEllipsis(label) : label;
-              return <span className="min-w-0 flex-1 truncate text-xs font-medium text-cafe-secondary">{display}</span>;
-            })()}
+            {icon === 'pin' && <PinSectionIcon />}
+            <span className="min-w-0 flex-1 truncate text-xs font-medium text-cafe-secondary">{label}</span>
           </button>
         )}
 
@@ -220,30 +190,25 @@ export function SectionGroup({
             <path d="M8 4a1 1 0 110-2 1 1 0 010 2zm0 5a1 1 0 110-2 1 1 0 010 2zm0 5a1 1 0 110-2 1 1 0 010 2z" />
           </ActionButton>
         )}
-
-        {/* Project pin button — per demo (sidebar-proposals.html line 505): a常驻 sec-action
-            next to "更多操作". Pinned → accent + always visible; unpinned → muted, hover-reveal. */}
-        {onToggleProjectPin && (
-          <ActionButton
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleProjectPin();
-            }}
-            title={isProjectPinned ? '取消固定项目' : '固定项目到活跃区'}
-            testId="project-pin-btn"
-            className={isProjectPinned ? 'text-cafe-accent' : 'opacity-0 group-hover/section:opacity-100'}
-          >
-            <path d={ICON_PATHS.pin} />
-          </ActionButton>
-        )}
       </div>
 
       {/* F095 Phase F: Context menu dropdown */}
       {showMenu && (
         <div
           ref={menuRef}
-          className="absolute right-2 top-8 z-50 bg-cafe-surface rounded-lg shadow-lg border border-cafe py-1 min-w-[140px]"
+          className="absolute right-2 top-8 z-50 bg-cafe-surface rounded-lg shadow-lg border border-cafe py-1 min-w-[160px]"
         >
+          {onToggleProjectPin && (
+            <MenuItem
+              onClick={() => {
+                onToggleProjectPin();
+                setShowMenu(false);
+              }}
+              icon={<PinMenuIcon active={isProjectPinned} />}
+            >
+              {isProjectPinned ? '取消固定项目' : '固定项目到活跃区'}
+            </MenuItem>
+          )}
           {onOpenInFinder && (
             <MenuItem
               onClick={() => {
@@ -295,6 +260,44 @@ function SectionIcon({ iconPath, iconColor }: { iconPath: string; iconColor?: st
   );
 }
 
+/** Pinned-section icon — demo pushpin (sidebar-proposals.html line 205), stroke style, 24x24. */
+function PinSectionIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-3 w-3 flex-shrink-0 text-cafe-accent"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 17v5" />
+      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+    </svg>
+  );
+}
+
+/** Menu-item pushpin — accent when pinned, muted otherwise. */
+function PinMenuIcon({ active }: { active?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={`h-3 w-3 flex-shrink-0 ${active ? 'text-cafe-accent' : 'text-cafe-muted'}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 17v5" />
+      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+    </svg>
+  );
+}
+
 /** Small icon button used for pin / quick-create / menu actions. */
 function ActionButton({
   onClick,
@@ -332,15 +335,26 @@ function ActionButton({
 }
 
 /** Menu item for the project context menu dropdown. */
-function MenuItem({ onClick, danger, children }: { onClick: () => void; danger?: boolean; children: React.ReactNode }) {
+function MenuItem({
+  onClick,
+  danger,
+  icon,
+  children,
+}: {
+  onClick: () => void;
+  danger?: boolean;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+      className={`flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-xs transition-colors ${
         danger ? 'text-conn-red-text hover:bg-conn-red-bg' : 'text-cafe-secondary hover:bg-cafe-surface-elevated'
       }`}
     >
+      {icon && <span className="flex flex-shrink-0 items-center">{icon}</span>}
       {children}
     </button>
   );
