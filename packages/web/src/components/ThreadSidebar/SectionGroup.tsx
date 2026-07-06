@@ -71,7 +71,7 @@ export function SectionGroup({
   const inputRef = useRef<HTMLInputElement>(null);
   const ime = useIMEGuard();
 
-  const hasContextMenu = onOpenInFinder || onRenameProject || onArchiveThreads;
+  const hasContextMenu = onOpenInFinder || onRenameProject || onArchiveThreads || onToggleProjectPin;
 
   // Close menu on click outside
   useEffect(() => {
@@ -191,20 +191,7 @@ export function SectionGroup({
           </ActionButton>
         )}
 
-        {/* Project pin button */}
-        {onToggleProjectPin && (
-          <ActionButton
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleProjectPin();
-            }}
-            title={isProjectPinned ? '取消固定项目' : '固定项目到活跃区'}
-            testId="project-pin-btn"
-            className={isProjectPinned ? 'text-cafe-accent' : 'text-cafe-muted hover:text-cafe-muted'}
-          >
-            <path d={ICON_PATHS.pin} />
-          </ActionButton>
-        )}
+        {/* Project pin button moved into "更多操作" menu per co-creator request */}
       </div>
 
       {/* F095 Phase F: Context menu dropdown */}
@@ -213,6 +200,16 @@ export function SectionGroup({
           ref={menuRef}
           className="absolute right-2 top-8 z-50 bg-cafe-surface rounded-lg shadow-lg border border-cafe py-1 min-w-[140px]"
         >
+          {onToggleProjectPin && (
+            <MenuItem
+              onClick={() => {
+                onToggleProjectPin();
+                setShowMenu(false);
+              }}
+            >
+              {isProjectPinned ? '取消固定项目' : '固定项目到活跃区'}
+            </MenuItem>
+          )}
           {onOpenInFinder && (
             <MenuItem
               onClick={() => {

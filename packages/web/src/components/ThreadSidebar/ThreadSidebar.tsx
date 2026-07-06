@@ -857,7 +857,11 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
           onManualOrganize={() => setShowOrganizer(true)}
         />
 
-        <div ref={scrollContainerRef} onScroll={handleScrollAnchor} className="flex-1 overflow-y-auto">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScrollAnchor}
+          className="flex-1 overflow-y-auto [scrollbar-width:thin] hover:[scrollbar-color:var(--cafe-muted)_transparent] [scrollbar-color:transparent_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-cafe-muted [&::-webkit-scrollbar-thumb]:rounded-full transition-[scrollbar-color]"
+        >
           {isLoadingThreads && threads.length === 0 && (
             <div className="text-center py-4 text-xs text-cafe-muted">加载中...</div>
           )}
@@ -876,11 +880,11 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
 
           {tabs.length > 0 && (
             <div
-              className="flex items-stretch gap-1 border-b border-cafe-subtle pl-3 pr-2"
+              className="mt-2 flex items-stretch gap-1 border-b border-cafe-subtle pl-3 pr-2"
               data-testid="sidebar-tabs-row"
             >
               <div
-                className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto overflow-y-hidden px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,transparent,#000_8px,#000_calc(100%-8px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,#000_8px,#000_calc(100%-8px),transparent)]"
                 role="tablist"
                 aria-label="对话分类"
                 data-testid="sidebar-tabs-scroll"
@@ -907,7 +911,11 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                   </button>
                 ))}
               </div>
-              <div className="my-1.5 w-px flex-shrink-0 bg-cafe-subtle" aria-hidden="true" />
+              <div
+                className="my-auto h-4 w-px flex-shrink-0 bg-cafe-subtle"
+                aria-hidden="true"
+                data-testid="sidebar-tabs-divider"
+              />
               <div className="flex flex-shrink-0 items-center gap-0.5">
                 <button
                   type="button"
