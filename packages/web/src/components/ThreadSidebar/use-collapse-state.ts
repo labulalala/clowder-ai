@@ -196,12 +196,5 @@ export function useCollapseState({ threadGroups, searchQuery, currentThreadId }:
     }
   }, [searchQuery]);
 
-  // allCollapsed: every currently-visible project group is collapsed.
-  // Drives the variable toggle button (collapsed → "展开全部", else → "折叠全部").
-  // During search, searchExpanded overrides collapse for matching groups, so we
-  // only treat it as "all collapsed" when no search is active.
-  const visibleKeys = getAllGroupKeys(threadGroups);
-  const allCollapsed = visibleKeys.length > 0 && searchQuery.length === 0 && visibleKeys.every((k) => collapsed.has(k));
-
-  return { isCollapsed, toggleGroup, expandAll, collapseAll, allCollapsed };
+  return { isCollapsed, toggleGroup, expandAll, collapseAll };
 }

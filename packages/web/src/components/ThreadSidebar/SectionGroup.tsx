@@ -150,7 +150,7 @@ export function SectionGroup({
           >
             <SectionChevron isCollapsed={isCollapsed} />
             {iconPath && <SectionIcon iconPath={iconPath} iconColor={iconColor} />}
-            {icon === 'pin' && <PinSectionIcon />}
+            {isProjectPinned && <PinSectionIcon />}
             <span className="min-w-0 flex-1 truncate text-xs font-medium text-cafe-secondary">{label}</span>
           </button>
         )}
