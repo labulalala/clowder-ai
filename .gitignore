@@ -21,6 +21,9 @@ docs/markers/
 docs/features/index.json
 build/
 .next/
+# Isolated dist dir for parallel dev instances (NEXT_DIST_DIR, e.g. acceptance
+# verification on a separate port). See packages/web/next.config.js.
+.next-*/
 
 # PWA generated service worker files
 packages/web/public/sw.js

@@ -21,6 +21,12 @@ interface BrowseResult {
   entries: BrowseEntry[];
 }
 
+interface DriveInfo {
+  letter: string;
+  path: string;
+  label: string;
+}
+
 interface DirectoryBrowserProps {
   /** Initially browsed path — defaults to home via API */
   initialPath?: string;
@@ -30,6 +36,28 @@ interface DirectoryBrowserProps {
   onCurrentPathChange?: (path: string) => void;
   /** Called when user cancels */
   onCancel: () => void;
+}
+
+/**
+ * Build breadcrumb segments for a Windows drive path (e.g. "D:\XXX").
+ * The drive root is its own clickable segment so the user can navigate back
+ * to "D:\" — without this, the drive letter layer is silently swallowed and
+ * the breadcrumb reads "此电脑 > XXX" instead of "此电脑 > 本地磁盘 (D:) > XXX".
+ * Drive root path keeps the trailing separator (realpath needs it to resolve
+ * the drive rather than cwd-on-drive).
+ */
+function windowsDriveSegments(absPath: string, sep: string): { label: string; path: string }[] {
+  const parts = absPath.split(/[/\\]/).filter(Boolean);
+  if (parts.length === 0) return [];
+
+  const driveRoot = `${parts[0]}${sep}`;
+  const segments: { label: string; path: string }[] = [{ label: parts[0], path: driveRoot }];
+  let accumulated = driveRoot;
+  for (let i = 1; i < parts.length; i++) {
+    accumulated = accumulated.endsWith(sep) ? `${accumulated}${parts[i]}` : `${accumulated}${sep}${parts[i]}`;
+    segments.push({ label: parts[i], path: accumulated });
+  }
+  return segments;
 }
 
 /**
@@ -64,9 +92,12 @@ function pathToSegments(absPath: string, homePath: string): { label: string; pat
   // a non-allowed ancestor, the backend returns 403 and the error is shown
   // gracefully. This is better than hiding valid ancestors like /tmp which
   // IS in the default allowlist (project-path.ts:22-35).
+  if (/^[A-Za-z]:[\\/]?/.test(absPath)) {
+    return windowsDriveSegments(absPath, sep);
+  }
+
   const parts = absPath.split(/[/\\]/).filter(Boolean);
   const segments: { label: string; path: string }[] = [];
-
   let accumulated = absPath.startsWith('/') ? '' : parts[0];
   const startIdx = absPath.startsWith('/') ? 0 : 1;
   for (let i = startIdx; i < parts.length; i++) {
@@ -75,6 +106,77 @@ function pathToSegments(absPath: string, homePath: string): { label: string; pat
   }
 
   return segments;
+}
+
+/**
+ * Detect whether an absolute path is a Windows drive root (e.g. "C:\").
+ * Drive roots are special: win32.dirname returns the drive itself, so there is
+ * no "parent" to traverse up from. The only way across drives is via the
+ * "此电脑" drive-picker view.
+ */
+function isWindowsDriveRoot(absPath: string): boolean {
+  return /^[A-Za-z]:[\\/]$/.test(absPath);
+}
+
+/**
+ * Format the label for a drive root in breadcrumbs, e.g. "C:\" → "本地磁盘 (C:)".
+ * Falls back to the raw path if no drive info matches.
+ */
+function driveRootLabel(absPath: string, drives: DriveInfo[]): string {
+  const match = drives.find((d) => d.path.toLowerCase() === absPath.toLowerCase());
+  return match?.label ?? absPath;
+}
+
+/** Build the browse API URL for an optional path argument. */
+function buildBrowseUrl(path?: string): string {
+  return path ? `/api/projects/browse?path=${encodeURIComponent(path)}` : '/api/projects/browse';
+}
+
+/** Whether a failed browse response should trigger the homedir fallback. */
+function shouldFallbackToHome(fallbackOnForbidden: boolean, path: string | undefined, status: number): boolean {
+  return fallbackOnForbidden && Boolean(path) && status === 403;
+}
+
+/**
+ * F113 drive-picker state: tracks whether we're showing the drives grid vs a
+ * directory listing, and lazily loads the Windows drive list on first entry.
+ * "此电脑" entry is gated by isWindows (detected via userAgent) so macOS/Linux
+ * are unaffected — drive letters are a Windows concept.
+ */
+function useDrivesLoader() {
+  const [view, setView] = useState<'directory' | 'drives'>('directory');
+  const [drives, setDrives] = useState<DriveInfo[]>([]);
+  const drivesLoadedRef = useRef(false);
+  const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
+
+  // Lazily fetch drives only when the user enters the drives view — keeps
+  // mount-time API calls unchanged for the common directory-browsing path.
+  useEffect(() => {
+    if (view !== 'drives') return;
+    if (drivesLoadedRef.current) return;
+    drivesLoadedRef.current = true;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/projects/drives');
+        if (!res.ok) return;
+        const data = await res.json();
+        setDrives(Array.isArray(data.drives) ? data.drives : []);
+      } catch {
+        // drives unavailable — non-fatal, drives stays []
+      }
+    })();
+  }, [view]);
+
+  const showDrivesView = useCallback(() => setView('drives'), []);
+  const showDirectoryView = useCallback(() => setView('directory'), []);
+
+  return {
+    view,
+    drives,
+    showThisPcEntry: isWindows,
+    showDrivesView,
+    showDirectoryView,
+  };
 }
 
 export function DirectoryBrowser({
@@ -93,26 +195,25 @@ export function DirectoryBrowser({
   const [newDirName, setNewDirName] = useState('');
   const [mkdirError, setMkdirError] = useState<string | null>(null);
   const newDirInputRef = useRef<HTMLInputElement>(null);
+  const { view, drives, showThisPcEntry, showDrivesView, showDirectoryView } = useDrivesLoader();
 
   const fetchDirectory = useCallback(
     async (path?: string, fallbackOnForbidden = false) => {
       setIsLoading(true);
       setError(null);
+      showDirectoryView();
       try {
-        const url = path ? `/api/projects/browse?path=${encodeURIComponent(path)}` : '/api/projects/browse';
-        const res = await apiFetch(url);
+        const res = await apiFetch(buildBrowseUrl(path));
         if (!res.ok) {
-          // On initial load only: if initialPath is forbidden (403), visibly fall
-          // back to homedir so the user gets a browsable directory. Non-403 errors
-          // (400 readdir failure, 500) always surface — no silent swallowing.
-          if (fallbackOnForbidden && path && res.status === 403) {
+          // 403 fallback (initial load only) — otherwise surface the error.
+          if (shouldFallbackToHome(fallbackOnForbidden, path, res.status)) {
             setInfo('配置路径不可用，已切换到主目录');
             // await so outer finally doesn't clear isLoading before fallback finishes
             await fetchDirectory(undefined, false);
             return;
           }
-          const data = await res.json();
-          setError(data.error || 'Failed to browse directory');
+          const errData = await res.json();
+          setError(errData.error || 'Failed to browse directory');
           // Keep previous browseResult — don't destroy current listing on error.
           return;
         }
@@ -126,7 +227,7 @@ export function DirectoryBrowser({
         setIsLoading(false);
       }
     },
-    [onCurrentPathChange],
+    [onCurrentPathChange, showDirectoryView],
   );
 
   // Initial load — try initialPath, fallback to homedir on 403 (with visible info)
@@ -138,6 +239,15 @@ export function DirectoryBrowser({
     const trimmed = pathInput.trim();
     if (trimmed) fetchDirectory(trimmed);
   }, [pathInput, fetchDirectory]);
+
+  // Enter "此电脑" drive-picker view: clear transient error/info, then switch.
+  // showDrivesView (from useDrivesLoader) handles the actual view state + lazy
+  // drives fetch; this wrapper just resets the directory-listing banners.
+  const enterDrivesView = useCallback(() => {
+    setError(null);
+    setInfo(null);
+    showDrivesView();
+  }, [showDrivesView]);
 
   const handleStartCreateDir = useCallback(() => {
     setCreatingDir(true);
@@ -175,37 +285,65 @@ export function DirectoryBrowser({
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* ── Breadcrumb + New Folder ── */}
       <div className="flex items-center gap-1 px-5 h-10 bg-cafe-white console-divider-b flex-shrink-0 overflow-x-auto">
-        {segments.map((seg, i) => (
-          <span key={seg.path || `_${i}`} className="flex items-center gap-1 flex-shrink-0">
-            {i > 0 && (
-              <svg aria-hidden="true" className="w-3 h-3 text-cafe-muted" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-            {i === segments.length - 1 ? (
-              <span className="text-xs font-semibold text-cafe-black">{seg.label}</span>
+        {showThisPcEntry && (
+          <span className="flex items-center gap-1 flex-shrink-0">
+            {view === 'drives' ? (
+              <span className="text-xs font-semibold text-cafe-black flex items-center gap-1">
+                <PcIcon />
+                此电脑
+              </span>
             ) : (
               <button
                 type="button"
-                onClick={() => fetchDirectory(seg.path || undefined)}
-                className="text-xs font-medium text-cafe-accent hover:underline"
+                onClick={enterDrivesView}
+                className="text-xs font-medium text-cafe-accent hover:underline flex items-center gap-1"
               >
-                {i === 0 && seg.label === 'Home' ? (
-                  <span className="flex items-center gap-1">
-                    <HomeIcon />
-                    {seg.label}
-                  </span>
-                ) : (
-                  seg.label
-                )}
+                <PcIcon />
+                此电脑
               </button>
             )}
           </span>
-        ))}
+        )}
+        {segments.map((seg, i) => {
+          // Drive-root segments (e.g. "D:\") show the friendly drive label
+          // (e.g. "本地磁盘 (D:)") whether or not they're the current leaf —
+          // so the breadcrumb reads "此电脑 > 本地磁盘 (D:) > XXX" throughout.
+          const isLast = i === segments.length - 1;
+          const isDriveSeg = isWindowsDriveRoot(seg.path);
+          const label = isDriveSeg ? driveRootLabel(seg.path, drives) : seg.label;
+          const showSeparator = showThisPcEntry || i > 0;
+          return (
+            <span key={seg.path || `_${i}`} className="flex items-center gap-1 flex-shrink-0">
+              {showSeparator && (
+                <svg aria-hidden="true" className="w-3 h-3 text-cafe-muted" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+              {isLast ? (
+                <span className="text-xs font-semibold text-cafe-black">{label}</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fetchDirectory(seg.path || undefined)}
+                  className="text-xs font-medium text-cafe-accent hover:underline"
+                >
+                  {i === 0 && seg.label === 'Home' ? (
+                    <span className="flex items-center gap-1">
+                      <HomeIcon />
+                      {seg.label}
+                    </span>
+                  ) : (
+                    label
+                  )}
+                </button>
+              )}
+            </span>
+          );
+        })}
         {/* [+] New folder button */}
         <button
           type="button"
@@ -271,7 +409,42 @@ export function DirectoryBrowser({
           </div>
         )}
 
-        {isLoading && (
+        {/* ── Drives view (Windows only): grid of drive letters ── */}
+        {view === 'drives' && (
+          <div className="py-2">
+            {drives.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <span className="text-xs text-cafe-muted">未发现可用磁盘</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-1.5 px-2">
+                {drives.map((drive) => {
+                  const isActive = activeProjectPath?.toLowerCase() === drive.path.toLowerCase();
+                  return (
+                    <button
+                      key={drive.letter}
+                      type="button"
+                      onClick={() => fetchDirectory(drive.path)}
+                      className={`text-left px-3 py-2.5 text-sm rounded-lg transition-colors flex items-center gap-2.5 ${
+                        isActive ? 'bg-cafe-surface ring-1 ring-cafe-accent/40' : 'hover:bg-cafe-surface/50'
+                      }`}
+                      title={drive.path}
+                    >
+                      <DriveIcon className="text-cafe-muted" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-cafe-black truncate">{drive.label}</div>
+                        <div className="text-micro text-cafe-muted truncate">{drive.path}</div>
+                      </div>
+                      {isActive && <span className="text-micro text-cafe-accent flex-shrink-0">当前项目</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {view === 'directory' && isLoading && (
           <div className="flex items-center justify-center py-8">
             <span className="text-xs text-cafe-muted animate-pulse">Loading...</span>
           </div>
@@ -289,13 +462,14 @@ export function DirectoryBrowser({
           </div>
         )}
 
-        {!isLoading && browseResult && browseResult.entries.length === 0 && (
+        {view === 'directory' && !isLoading && browseResult && browseResult.entries.length === 0 && (
           <div className="flex items-center justify-center py-8">
             <span className="text-xs text-cafe-muted">No subdirectories</span>
           </div>
         )}
 
-        {!isLoading &&
+        {view === 'directory' &&
+          !isLoading &&
           browseResult?.entries.map((entry) => {
             const isActive = activeProjectPath === entry.path;
             return (
@@ -364,10 +538,14 @@ export function DirectoryBrowser({
 
         {/* ── Action bar ── */}
         <div className="flex items-center gap-2 pt-1">
-          {browseResult && (
-            <span className="text-xs text-cafe-secondary truncate flex-1" title={browseResult.current}>
-              {browseResult.current}
-            </span>
+          {view === 'drives' ? (
+            <span className="text-xs text-cafe-secondary truncate flex-1">此电脑</span>
+          ) : (
+            browseResult && (
+              <span className="text-xs text-cafe-secondary truncate flex-1" title={browseResult.current}>
+                {browseResult.current}
+              </span>
+            )
           )}
           <button
             type="button"
@@ -386,6 +564,28 @@ function HomeIcon() {
   return (
     <svg aria-hidden="true" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
       <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+    </svg>
+  );
+}
+
+function PcIcon() {
+  return (
+    <svg aria-hidden="true" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M2 4.5A1.5 1.5 0 013.5 3h13A1.5 1.5 0 0118 4.5v8a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 012 12.5v-8z" />
+      <path d="M4 14h12v1.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 014 15.5V14z" opacity="0.5" />
+    </svg>
+  );
+}
+
+function DriveIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={`w-4 h-4 flex-shrink-0 ${className ?? ''}`}
+      viewBox="0 0 16 16"
+      fill="currentColor"
+    >
+      <path d="M2 4.5A1.5 1.5 0 013.5 3h9A1.5 1.5 0 0114 4.5v7A1.5 1.5 0 0112.5 13h-9A1.5 1.5 0 012 11.5v-7zm2.5 6.5a1 1 0 100-2 1 1 0 000 2z" />
     </svg>
   );
 }

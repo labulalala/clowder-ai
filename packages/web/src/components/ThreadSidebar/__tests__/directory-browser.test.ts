@@ -297,6 +297,35 @@ describe('DirectoryBrowser', () => {
     expect(container.textContent).toContain('src');
   });
 
+  it('shows the drive letter as a breadcrumb segment for Windows drive paths outside home', async () => {
+    // F113: a path like D:\XXX must render "此电脑 > 本地磁盘 (D:) > XXX",
+    // not skip the drive layer. homePath is on C: so D: is outside home.
+    const winHome = 'C:\\Users\\test';
+    const driveRoot = 'D:\\';
+    mockApiFetch.mockReturnValueOnce(
+      jsonOk({
+        current: 'D:\\Projects',
+        name: 'Projects',
+        parent: driveRoot,
+        homePath: winHome,
+        entries: [{ name: 'src', path: 'D:\\Projects\\src', isDirectory: true }],
+      }),
+    );
+    // Also mock the drives endpoint (the component may fetch it lazily —
+    // if not called, this mock is simply unused, which is fine).
+    mockApiFetch.mockReturnValueOnce(jsonOk({ drives: [{ letter: 'D', path: driveRoot, label: '本地磁盘 (D:)' }] }));
+
+    render({ initialPath: 'D:\\Projects' });
+    await flush();
+
+    // The drive root must appear as its own breadcrumb segment so the user
+    // can click back to D:\. Without the fix, only "Projects" showed.
+    const driveButton = getAllButtons().find((b) => b.textContent?.includes('D'));
+    expect(driveButton).toBeTruthy();
+    // And the leaf folder is still present
+    expect(container.textContent).toContain('Projects');
+  });
+
   // ── Path input navigation ─────────────────────────────
 
   it('navigates to typed path on Enter key', async () => {

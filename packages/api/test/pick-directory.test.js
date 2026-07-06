@@ -201,3 +201,60 @@ describe('GET /api/projects/browse (F113 cross-platform)', () => {
     }
   });
 });
+
+describe('listAvailableDrives()', () => {
+  it('returns [] on non-Windows platforms', () => {
+    assert.deepEqual(mod.listAvailableDrives('darwin'), []);
+    assert.deepEqual(mod.listAvailableDrives('linux'), []);
+  });
+
+  it('returns an array of DriveInfo with letter/path/label shape on win32', () => {
+    // On a non-Windows test host, realpathSync('C:\\') throws, so every probe
+    // fails and the result is []. That still validates the function does not
+    // throw and returns the correct type. On a real Windows host this would
+    // return populated entries for mounted drives.
+    const result = mod.listAvailableDrives('win32');
+    assert.ok(Array.isArray(result));
+    for (const d of result) {
+      assert.ok(typeof d.letter === 'string' && d.letter.length === 1);
+      assert.ok(typeof d.path === 'string');
+      assert.ok(typeof d.label === 'string');
+    }
+  });
+
+  it('skips A: and B: (floppy legacy) — only probes C through Z', () => {
+    // Indirect assertion: listAvailableDrives never returns A or B regardless
+    // of platform, since the probe loop starts at 'C'.
+    for (const plat of ['win32', 'darwin', 'linux']) {
+      for (const d of mod.listAvailableDrives(plat)) {
+        assert.notEqual(d.letter, 'A');
+        assert.notEqual(d.letter, 'B');
+      }
+    }
+  });
+});
+
+describe('GET /api/projects/drives', () => {
+  it('returns 401 without trusted identity header', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/api/projects/drives' });
+    assert.equal(res.statusCode, 401);
+    const body = JSON.parse(res.body);
+    assert.ok(body.error.includes('Identity required'));
+  });
+
+  it('returns a drives array (empty on non-Windows host)', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/api/projects/drives', headers: AUTH_HEADERS });
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.ok(Array.isArray(body.drives));
+    // On the macOS/Linux CI host, no Windows drives are mounted → [].
+    // On a Windows host, this would contain C: at minimum.
+    for (const d of body.drives) {
+      assert.ok(typeof d.letter === 'string');
+      assert.ok(typeof d.path === 'string');
+      assert.ok(typeof d.label === 'string');
+    }
+  });
+});
