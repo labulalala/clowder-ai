@@ -82,7 +82,9 @@ function jsonOk(data: unknown) {
 
 function findScrollContainer(root: HTMLElement): HTMLDivElement {
   const scroller = Array.from(root.querySelectorAll('div')).find(
-    (el): el is HTMLDivElement => el.className.includes('overflow-y-auto') && !!el.querySelector('[data-thread-id]'),
+    (el): el is HTMLDivElement =>
+      (el.className.includes('overflow-y-auto') || el.className.includes('overflow-y:overlay')) &&
+      !!el.querySelector('[data-thread-id]'),
   );
   if (!scroller) throw new Error('scroll container not found');
   return scroller;

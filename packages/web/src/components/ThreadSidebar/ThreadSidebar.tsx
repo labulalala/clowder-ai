@@ -860,7 +860,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
         <div
           ref={scrollContainerRef}
           onScroll={handleScrollAnchor}
-          className="flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:transparent_transparent] hover:[scrollbar-color:var(--cafe-muted)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-cafe-muted"
+          className="flex-1 [overflow-y:overlay] [scrollbar-gutter:auto] [scrollbar-width:thin] [scrollbar-color:transparent_transparent] hover:[scrollbar-color:var(--cafe-muted)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-cafe-muted"
         >
           {isLoadingThreads && threads.length === 0 && (
             <div className="text-center py-4 text-xs text-cafe-muted">加载中...</div>
@@ -911,24 +911,19 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-
-          <div className="pt-1.5" data-testid="sidebar-tab-content">
-            {activeTabContent.kind === 'project' && threadGroups.length > 0 && (
-              <div className="flex items-center justify-between px-3 pb-1.5" data-testid="sidebar-project-toolbar">
-                <span className="text-micro text-cafe-muted">项目 · {threadGroups.length}</span>
+              {activeTabContent.kind === 'project' && threadGroups.length > 0 && (
                 <button
                   type="button"
                   onClick={allCollapsed ? expandAll : collapseAll}
-                  className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-micro text-cafe-secondary transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                  className="flex flex-shrink-0 items-center justify-center rounded-md p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
                   data-testid={allCollapsed ? 'expand-all-btn' : 'collapse-all-btn'}
                   aria-label={allCollapsed ? '展开全部项目' : '折叠全部项目'}
                   title={allCollapsed ? '展开全部' : '折叠全部'}
                 >
+                  {/* IntelliJ-style expand/collapse chevron: expand=down, collapse=up */}
                   <svg
                     aria-hidden="true"
-                    className="h-3 w-3"
+                    className="h-3.5 w-3.5"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -938,11 +933,12 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                   >
                     {allCollapsed ? <path d="M6 9l6 6 6-6" /> : <path d="M18 15l-6-6-6 6" />}
                   </svg>
-                  <span>{allCollapsed ? '展开全部' : '折叠全部'}</span>
                 </button>
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
+          <div className="pt-1.5" data-testid="sidebar-tab-content">
             {activeTabContent.kind === 'flat' && activeTabContent.threads.map((t) => renderThreadItem(t))}
 
             {activeTabContent.kind === 'project' &&
