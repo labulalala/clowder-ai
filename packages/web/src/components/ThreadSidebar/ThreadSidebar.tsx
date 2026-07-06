@@ -736,7 +736,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
     () => buildSidebarTabContent('project', labelFilteredThreads, pinnedProjects).projectGroups ?? [],
     [labelFilteredThreads, pinnedProjects],
   );
-  const threadGroups = activeTabContent.kind === 'project' ? (activeTabContent.projectGroups ?? []) : [];
+  const threadGroups = activeTab === 'project' ? projectThreadGroups : [];
   const existingProjects = useMemo(() => getProjectPaths(liveThreads), [liveThreads]);
   const showDefaultThread = (normalizedQuery.length === 0 || '大厅'.includes(normalizedQuery)) && !labelFilter;
 
