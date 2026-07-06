@@ -370,7 +370,6 @@ function ArchiveMenuIcon() {
   );
 }
 
-
 /** Small icon button used for pin / quick-create / menu actions. */
 function ActionButton({
   onClick,
