@@ -860,7 +860,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
         <div
           ref={scrollContainerRef}
           onScroll={handleScrollAnchor}
-          className="flex-1 overflow-y-auto [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:transparent_transparent] hover:[scrollbar-color:var(--cafe-muted)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-cafe-muted"
+          className="flex-1 overflow-y-auto [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:transparent_var(--console-panel-bg)] hover:[scrollbar-color:var(--cafe-muted)_var(--console-panel-bg)] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-[var(--console-panel-bg)] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-cafe-muted [&::-webkit-scrollbar-corner]:bg-[var(--console-panel-bg)]"
         >
           {isLoadingThreads && threads.length === 0 && (
             <div className="text-center py-4 text-xs text-cafe-muted">加载中...</div>
@@ -909,8 +909,9 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                       <span>{tab.label}</span>
                       <span className={activeTab === tab.id ? 'text-cafe-accent' : 'text-cafe-muted'}>{tab.count}</span>
                     </button>
-                    {/* Expand/collapse toggle — directly right of the project tab, only when project is active.
-                        IntelliJ-style chevron: expand=down, collapse=up. */}
+                    {/* Expand/collapse toggle — fused onto the project tab's right edge, sharing its
+                        underline so it reads as part of the tab. Only when project is active.
+                        IntelliJ-style double-chevron: expand = two chevrons-down stacked, collapse = two up. */}
                     {tab.id === 'project' &&
                       activeTab === 'project' &&
                       activeTabContent.kind === 'project' &&
@@ -918,7 +919,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                         <button
                           type="button"
                           onClick={allCollapsed ? expandAll : collapseAll}
-                          className="flex flex-shrink-0 items-center justify-center rounded-md p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                          className="flex flex-shrink-0 items-center justify-center border-b-2 border-cafe-accent px-1 py-1.5 text-cafe-accent transition-colors hover:text-cafe-black"
                           data-testid={allCollapsed ? 'expand-all-btn' : 'collapse-all-btn'}
                           aria-label={allCollapsed ? '展开全部项目' : '折叠全部项目'}
                           title={allCollapsed ? '展开全部' : '折叠全部'}
@@ -933,7 +934,17 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >
-                            {allCollapsed ? <path d="M6 9l6 6 6-6" /> : <path d="M18 15l-6-6-6 6" />}
+                            {allCollapsed ? (
+                              <>
+                                <path d="M6 5l6 6 6-6" />
+                                <path d="M6 13l6 6 6-6" />
+                              </>
+                            ) : (
+                              <>
+                                <path d="M18 11l-6-6-6 6" />
+                                <path d="M18 19l-6-6-6 6" />
+                              </>
+                            )}
                           </svg>
                         </button>
                       )}
