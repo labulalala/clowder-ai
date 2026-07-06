@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type Thread, useChatStore } from '@/stores/chatStore';
 import { useLabelStore } from '@/stores/label-store';
 import { useToastStore } from '@/stores/toastStore';
@@ -860,7 +860,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
         <div
           ref={scrollContainerRef}
           onScroll={handleScrollAnchor}
-          className="flex-1 [overflow-y:overlay] [scrollbar-gutter:auto] [scrollbar-width:thin] [scrollbar-color:transparent_transparent] hover:[scrollbar-color:var(--cafe-muted)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-cafe-muted"
+          className="flex-1 overflow-y-auto [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:transparent_transparent] hover:[scrollbar-color:var(--cafe-muted)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-cafe-muted"
         >
           {isLoadingThreads && threads.length === 0 && (
             <div className="text-center py-4 text-xs text-cafe-muted">加载中...</div>
@@ -890,51 +890,56 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                 data-testid="sidebar-tabs-scroll"
               >
                 {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    ref={(node) => {
-                      tabRefs.current[tab.id] = node;
-                    }}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex flex-shrink-0 items-center gap-1 rounded-t-md border-b-2 px-2 py-1.5 text-micro font-medium transition-colors ${
-                      activeTab === tab.id
-                        ? 'border-cafe-accent text-cafe-accent'
-                        : 'border-transparent text-cafe-muted hover:bg-[var(--console-hover-bg)] hover:text-cafe-secondary'
-                    }`}
-                    data-testid={`sidebar-tab-${tab.id}`}
-                  >
-                    <span>{tab.label}</span>
-                    <span className={activeTab === tab.id ? 'text-cafe-accent' : 'text-cafe-muted'}>{tab.count}</span>
-                  </button>
+                  <Fragment key={tab.id}>
+                    <button
+                      ref={(node) => {
+                        tabRefs.current[tab.id] = node;
+                      }}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex flex-shrink-0 items-center gap-1 rounded-t-md border-b-2 px-2 py-1.5 text-micro font-medium transition-colors ${
+                        activeTab === tab.id
+                          ? 'border-cafe-accent text-cafe-accent'
+                          : 'border-transparent text-cafe-muted hover:bg-[var(--console-hover-bg)] hover:text-cafe-secondary'
+                      }`}
+                      data-testid={`sidebar-tab-${tab.id}`}
+                    >
+                      <span>{tab.label}</span>
+                      <span className={activeTab === tab.id ? 'text-cafe-accent' : 'text-cafe-muted'}>{tab.count}</span>
+                    </button>
+                    {/* Expand/collapse toggle — directly right of the project tab, only when project is active.
+                        IntelliJ-style chevron: expand=down, collapse=up. */}
+                    {tab.id === 'project' &&
+                      activeTab === 'project' &&
+                      activeTabContent.kind === 'project' &&
+                      threadGroups.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={allCollapsed ? expandAll : collapseAll}
+                          className="flex flex-shrink-0 items-center justify-center rounded-md p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                          data-testid={allCollapsed ? 'expand-all-btn' : 'collapse-all-btn'}
+                          aria-label={allCollapsed ? '展开全部项目' : '折叠全部项目'}
+                          title={allCollapsed ? '展开全部' : '折叠全部'}
+                        >
+                          <svg
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            {allCollapsed ? <path d="M6 9l6 6 6-6" /> : <path d="M18 15l-6-6-6 6" />}
+                          </svg>
+                        </button>
+                      )}
+                  </Fragment>
                 ))}
               </div>
-              {activeTabContent.kind === 'project' && threadGroups.length > 0 && (
-                <button
-                  type="button"
-                  onClick={allCollapsed ? expandAll : collapseAll}
-                  className="flex flex-shrink-0 items-center justify-center rounded-md p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
-                  data-testid={allCollapsed ? 'expand-all-btn' : 'collapse-all-btn'}
-                  aria-label={allCollapsed ? '展开全部项目' : '折叠全部项目'}
-                  title={allCollapsed ? '展开全部' : '折叠全部'}
-                >
-                  {/* IntelliJ-style expand/collapse chevron: expand=down, collapse=up */}
-                  <svg
-                    aria-hidden="true"
-                    className="h-3.5 w-3.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    {allCollapsed ? <path d="M6 9l6 6 6-6" /> : <path d="M18 15l-6-6-6 6" />}
-                  </svg>
-                </button>
-              )}
             </div>
           )}
 
