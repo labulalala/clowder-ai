@@ -944,7 +944,6 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                         strokeLinejoin="round"
                       >
                         <path d="M6 9l6 6 6-6" />
-                        <path d="M6 15l6 6 6-6" />
                       </svg>
                     </button>
                     <button
@@ -966,7 +965,6 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                         strokeLinejoin="round"
                       >
                         <path d="M18 15l-6-6-6 6" />
-                        <path d="M18 9l-6-6-6 6" />
                       </svg>
                     </button>
                   </div>
