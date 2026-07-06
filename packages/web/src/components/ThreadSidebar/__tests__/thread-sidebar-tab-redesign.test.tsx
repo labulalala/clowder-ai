@@ -103,30 +103,34 @@ describe('ThreadSidebar v9 tab redesign', () => {
     expect(visibleThreadIds(harness.container)).toEqual(['default', 'favorite']);
   });
 
-  it('shows a variable expand/collapse toggle next to the project tab', async () => {
+  it('shows separate expand/collapse buttons in a project toolbar below the tabs', async () => {
     await harness.render();
 
-    // Default (recent) tab is flat — no toggle in the tabs row.
-    expect(harness.container.querySelector('[data-testid="expand-all-btn"]')).toBeNull();
-    expect(harness.container.querySelector('[data-testid="collapse-all-btn"]')).toBeNull();
+    // Default (recent) tab is flat — no project toolbar.
+    expect(harness.container.querySelector('[data-testid="project-toolbar"]')).toBeNull();
 
-    // Project tab — toggle appears inside the tabs row, to the right of the tabs.
+    // Project tab — toolbar appears inside the tab content, below the tabs row.
     await clickTab(harness.container, 'project', harness.flush);
     const tabsRow = harness.container.querySelector('[data-testid="sidebar-tabs-row"]');
     expect(tabsRow).not.toBeNull();
 
-    // Variable button: exactly one of expand-all-btn / collapse-all-btn is present.
+    const toolbar = harness.container.querySelector('[data-testid="project-toolbar"]');
+    expect(toolbar).not.toBeNull();
+
+    // Two separate buttons (not a single toggle): expand-all + collapse-all, both present.
     const expand = harness.container.querySelector('[data-testid="expand-all-btn"]');
     const collapse = harness.container.querySelector('[data-testid="collapse-all-btn"]');
-    const presentCount = (expand ? 1 : 0) + (collapse ? 1 : 0);
-    expect(presentCount).toBe(1);
-    const btn = (expand ?? collapse) as HTMLButtonElement | null;
-    // Icon-only (no text label) — IntelliJ-style affordance next to the tab.
-    expect(btn?.textContent?.trim()).toBe('');
-    const label = btn?.getAttribute('aria-label') ?? '';
-    expect(label === '展开全部项目' || label === '折叠全部项目').toBe(true);
-    // Button lives inside the tabs row.
-    expect(tabsRow?.contains(btn)).toBe(true);
+    expect(expand).not.toBeNull();
+    expect(collapse).not.toBeNull();
+    // Both buttons live inside the toolbar (not the tabs row).
+    expect(toolbar?.contains(expand)).toBe(true);
+    expect(toolbar?.contains(collapse)).toBe(true);
+    expect(tabsRow?.contains(expand)).toBe(false);
+    // Icon-only (no text label).
+    expect((expand as HTMLButtonElement)?.textContent?.trim()).toBe('');
+    expect((collapse as HTMLButtonElement)?.textContent?.trim()).toBe('');
+    expect((expand as HTMLButtonElement)?.getAttribute('aria-label')).toBe('展开全部项目');
+    expect((collapse as HTMLButtonElement)?.getAttribute('aria-label')).toBe('折叠全部项目');
 
     const tabContent = harness.container.querySelector('[data-testid="sidebar-tab-content"]');
     expect(tabContent?.className).toContain('pt-1.5');

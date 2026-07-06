@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type Thread, useChatStore } from '@/stores/chatStore';
 import { useLabelStore } from '@/stores/label-store';
 import { useToastStore } from '@/stores/toastStore';
@@ -744,7 +744,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
   const { onScroll: handleScrollAnchor } = useScrollAnchor(scrollContainerRef, projectThreadGroups);
 
   // F095: Collapse state with localStorage persistence + search/active auto-expand
-  const { isCollapsed, toggleGroup, expandAll, collapseAll, allCollapsed } = useCollapseState({
+  const { isCollapsed, toggleGroup, expandAll, collapseAll } = useCollapseState({
     threadGroups: projectThreadGroups,
     searchQuery: normalizedQuery,
     currentThreadId,
@@ -890,65 +890,25 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                 data-testid="sidebar-tabs-scroll"
               >
                 {tabs.map((tab) => (
-                  <Fragment key={tab.id}>
-                    <button
-                      ref={(node) => {
-                        tabRefs.current[tab.id] = node;
-                      }}
-                      type="button"
-                      role="tab"
-                      aria-selected={activeTab === tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex flex-shrink-0 items-center gap-1 rounded-t-md border-b-2 px-2 py-1.5 text-micro font-medium transition-colors ${
-                        activeTab === tab.id
-                          ? 'border-cafe-accent text-cafe-accent'
-                          : 'border-transparent text-cafe-muted hover:bg-[var(--console-hover-bg)] hover:text-cafe-secondary'
-                      }`}
-                      data-testid={`sidebar-tab-${tab.id}`}
-                    >
-                      <span>{tab.label}</span>
-                      <span className={activeTab === tab.id ? 'text-cafe-accent' : 'text-cafe-muted'}>{tab.count}</span>
-                    </button>
-                    {/* Expand/collapse toggle — fused onto the project tab's right edge, sharing its
-                        underline so it reads as part of the tab. Only when project is active.
-                        IntelliJ-style double-chevron: expand = two chevrons-down stacked, collapse = two up. */}
-                    {tab.id === 'project' &&
-                      activeTab === 'project' &&
-                      activeTabContent.kind === 'project' &&
-                      threadGroups.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={allCollapsed ? expandAll : collapseAll}
-                          className="flex flex-shrink-0 items-center justify-center border-b-2 border-cafe-accent px-1 py-1.5 text-cafe-accent transition-colors hover:text-cafe-black"
-                          data-testid={allCollapsed ? 'expand-all-btn' : 'collapse-all-btn'}
-                          aria-label={allCollapsed ? '展开全部项目' : '折叠全部项目'}
-                          title={allCollapsed ? '展开全部' : '折叠全部'}
-                        >
-                          <svg
-                            aria-hidden="true"
-                            className="h-3.5 w-3.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            {allCollapsed ? (
-                              <>
-                                <path d="M6 5l6 6 6-6" />
-                                <path d="M6 13l6 6 6-6" />
-                              </>
-                            ) : (
-                              <>
-                                <path d="M18 11l-6-6-6 6" />
-                                <path d="M18 19l-6-6-6 6" />
-                              </>
-                            )}
-                          </svg>
-                        </button>
-                      )}
-                  </Fragment>
+                  <button
+                    key={tab.id}
+                    ref={(node) => {
+                      tabRefs.current[tab.id] = node;
+                    }}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex flex-shrink-0 items-center gap-1 rounded-t-md border-b-2 px-2 py-1.5 text-micro font-medium transition-colors ${
+                      activeTab === tab.id
+                        ? 'border-cafe-accent text-cafe-accent'
+                        : 'border-transparent text-cafe-muted hover:bg-[var(--console-hover-bg)] hover:text-cafe-secondary'
+                    }`}
+                    data-testid={`sidebar-tab-${tab.id}`}
+                  >
+                    <span>{tab.label}</span>
+                    <span className={activeTab === tab.id ? 'text-cafe-accent' : 'text-cafe-muted'}>{tab.count}</span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -956,6 +916,62 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
 
           <div className="pt-1.5" data-testid="sidebar-tab-content">
             {activeTabContent.kind === 'flat' && activeTabContent.threads.map((t) => renderThreadItem(t))}
+
+            {activeTabContent.kind === 'project' &&
+              threadGroups.length > 0 && (
+                <div
+                  className="flex items-center justify-between px-3 py-1 text-micro text-cafe-muted"
+                  data-testid="project-toolbar"
+                >
+                  <span>{threadGroups.length} 个项目</span>
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={expandAll}
+                      className="flex items-center justify-center rounded p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                      data-testid="expand-all-btn"
+                      aria-label="展开全部项目"
+                      title="展开全部"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                        <path d="M6 15l6 6 6-6" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={collapseAll}
+                      className="flex items-center justify-center rounded p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                      data-testid="collapse-all-btn"
+                      aria-label="折叠全部项目"
+                      title="折叠全部"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 15l-6-6-6 6" />
+                        <path d="M18 9l-6-6-6 6" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
 
             {activeTabContent.kind === 'project' &&
               threadGroups.map((group) => {
