@@ -103,9 +103,15 @@ describe('ThreadSidebar v9 tab redesign', () => {
     expect(visibleThreadIds(harness.container)).toEqual(['default', 'favorite']);
   });
 
-  it('uses icon-only expand controls in the tab row and gives the list top breathing room', async () => {
+  it('shows icon-only expand controls only on the project tab and gives the list top breathing room', async () => {
     await harness.render();
 
+    // Default (recent) tab is flat — no collapsible sections, so no expand/collapse buttons.
+    expect(harness.container.querySelector('[data-testid="expand-all-btn"]')).toBeNull();
+    expect(harness.container.querySelector('[data-testid="collapse-all-btn"]')).toBeNull();
+
+    // Project tab has collapsible project groups → buttons appear, icon-only.
+    await clickTab(harness.container, 'project', harness.flush);
     const expand = harness.container.querySelector('[data-testid="expand-all-btn"]');
     const collapse = harness.container.querySelector('[data-testid="collapse-all-btn"]');
     expect(expand?.textContent?.trim()).toBe('');

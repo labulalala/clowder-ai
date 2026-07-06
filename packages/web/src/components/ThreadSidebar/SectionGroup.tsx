@@ -1,6 +1,32 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useIMEGuard } from '@/hooks/useIMEGuard';
 
+/**
+ * Middle-ellipsis for long paths (demo spec, sidebar-proposals.html line 501):
+ *   D:\docs\projects\archive\cat-cafe-docs  →  D:\docs\...cafe-docs
+ * Keeps the first segment (drive/root + first dir) and the last segment (leaf),
+ * which is what humans need to disambiguate projects. Non-path labels fall back
+ * to tail truncation.
+ */
+function middleEllipsis(label: string, maxLen = 24): string {
+  if (label.length <= maxLen) return label;
+  const sepIdx = label.search(/[\\/]/);
+  if (sepIdx < 0) return label; // not a path — let CSS truncate the tail
+  const firstSep = label.search(/[\\/]/);
+  const lastSep = Math.max(label.lastIndexOf('\\'), label.lastIndexOf('/'));
+  if (lastSep <= firstSep) return label; // only one segment
+  const head = label.slice(0, firstSep + 1);
+  const tail = label.slice(lastSep + 1);
+  const budget = maxLen - head.length - tail.length - 3; // 3 for "..."
+  if (budget <= 0) {
+    // not enough room — keep head + ... + tail with tail truncated
+    return `${head}...${tail.slice(-Math.max(4, maxLen - head.length - 6))}`;
+  }
+  // include a few chars after head for context (like demo: D:\docs\...ve\cat-cafe-docs)
+  const extra = label.slice(firstSep + 1, firstSep + 1 + budget);
+  return `${head}${extra}...${tail}`;
+}
+
 /** F070: governance status dot colors */
 const GOV_STATUS_DOT: Record<string, { color: string; title: string }> = {
   healthy: { color: 'bg-conn-emerald-text', title: '治理正常' },
@@ -151,7 +177,11 @@ export function SectionGroup({
           >
             <SectionChevron isCollapsed={isCollapsed} />
             {iconPath && <SectionIcon iconPath={iconPath} iconColor={iconColor} />}
-            <span className="min-w-0 flex-1 truncate text-xs font-medium text-cafe-secondary">{label}</span>
+            {(() => {
+              const isPath = !!projectPath && projectPath !== 'default' && /[\\/]/.test(label);
+              const display = isPath ? middleEllipsis(label) : label;
+              return <span className="min-w-0 flex-1 truncate text-xs font-medium text-cafe-secondary">{display}</span>;
+            })()}
           </button>
         )}
 
@@ -191,7 +221,21 @@ export function SectionGroup({
           </ActionButton>
         )}
 
-        {/* Project pin button moved into "更多操作" menu per co-creator request */}
+        {/* Project pin button — per demo (sidebar-proposals.html line 505): a常驻 sec-action
+            next to "更多操作". Pinned → accent + always visible; unpinned → muted, hover-reveal. */}
+        {onToggleProjectPin && (
+          <ActionButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleProjectPin();
+            }}
+            title={isProjectPinned ? '取消固定项目' : '固定项目到活跃区'}
+            testId="project-pin-btn"
+            className={isProjectPinned ? 'text-cafe-accent' : 'opacity-0 group-hover/section:opacity-100'}
+          >
+            <path d={ICON_PATHS.pin} />
+          </ActionButton>
+        )}
       </div>
 
       {/* F095 Phase F: Context menu dropdown */}
@@ -200,16 +244,6 @@ export function SectionGroup({
           ref={menuRef}
           className="absolute right-2 top-8 z-50 bg-cafe-surface rounded-lg shadow-lg border border-cafe py-1 min-w-[140px]"
         >
-          {onToggleProjectPin && (
-            <MenuItem
-              onClick={() => {
-                onToggleProjectPin();
-                setShowMenu(false);
-              }}
-            >
-              {isProjectPinned ? '取消固定项目' : '固定项目到活跃区'}
-            </MenuItem>
-          )}
           {onOpenInFinder && (
             <MenuItem
               onClick={() => {

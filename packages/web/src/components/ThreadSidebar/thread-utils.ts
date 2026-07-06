@@ -120,8 +120,11 @@ function nonDefaultThreads(threads: Thread[]): Thread[] {
 }
 
 function tabRecentThreads(threads: Thread[]): Thread[] {
+  // Demo spec (sidebar-proposals.html line 200/848): 对话置顶 = 最近 Tab + 当前 Tab 双重置顶.
+  // A pinned system thread must still appear in the recent tab (additive, not exclusive).
+  // Unpinned system threads stay only in the system tab.
   return nonDefaultThreads(threads)
-    .filter((thread) => !isSystemThread(thread))
+    .filter((thread) => thread.pinned || !isSystemThread(thread))
     .sort(sortPinnedThenActive);
 }
 

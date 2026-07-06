@@ -158,6 +158,13 @@ describe('ThreadSidebar scroll memory', () => {
   }
 
   function expandAll(rootEl: HTMLElement) {
+    // v11: expand/collapse buttons only render on the project tab. Switch there first.
+    const projectTab = rootEl.querySelector('[data-testid="sidebar-tab-project"]') as HTMLButtonElement | null;
+    if (projectTab) {
+      act(() => {
+        projectTab.click();
+      });
+    }
     const expandBtn = rootEl.querySelector('[data-testid="expand-all-btn"]') as HTMLButtonElement | null;
     if (!expandBtn) throw new Error('expand-all button not found');
     act(() => {

@@ -860,7 +860,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
         <div
           ref={scrollContainerRef}
           onScroll={handleScrollAnchor}
-          className="flex-1 overflow-y-auto [scrollbar-width:thin] hover:[scrollbar-color:var(--cafe-muted)_transparent] [scrollbar-color:transparent_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-cafe-muted [&::-webkit-scrollbar-thumb]:rounded-full transition-[scrollbar-color]"
+          className="flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:transparent_transparent] hover:[scrollbar-color:var(--cafe-muted)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-cafe-muted"
         >
           {isLoadingThreads && threads.length === 0 && (
             <div className="text-center py-4 text-xs text-cafe-muted">加载中...</div>
@@ -880,7 +880,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
 
           {tabs.length > 0 && (
             <div
-              className="mt-2 flex items-stretch gap-1 border-b border-cafe-subtle pl-3 pr-2"
+              className="sticky top-0 z-10 flex items-stretch gap-1 border-b border-cafe-subtle bg-[var(--console-panel-bg)] pt-2 pl-3 pr-2"
               data-testid="sidebar-tabs-row"
             >
               <div
@@ -911,35 +911,39 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                   </button>
                 ))}
               </div>
-              <div
-                className="my-auto h-4 w-px flex-shrink-0 bg-cafe-subtle"
-                aria-hidden="true"
-                data-testid="sidebar-tabs-divider"
-              />
-              <div className="flex flex-shrink-0 items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={expandAll}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
-                  data-testid="expand-all-btn"
-                  aria-label="全部展开"
-                >
-                  <svg aria-hidden="true" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={collapseAll}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
-                  data-testid="collapse-all-btn"
-                  aria-label="全部折叠"
-                >
-                  <svg aria-hidden="true" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M18 15l-6-6-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </div>
+              {activeTabContent.kind === 'project' && (
+                <>
+                  <div
+                    className="my-auto h-4 w-px flex-shrink-0 bg-cafe-subtle"
+                    aria-hidden="true"
+                    data-testid="sidebar-tabs-divider"
+                  />
+                  <div className="flex flex-shrink-0 items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={expandAll}
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                      data-testid="expand-all-btn"
+                      aria-label="全部展开"
+                    >
+                      <svg aria-hidden="true" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={collapseAll}
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                      data-testid="collapse-all-btn"
+                      aria-label="全部折叠"
+                    >
+                      <svg aria-hidden="true" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M18 15l-6-6-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
