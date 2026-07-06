@@ -917,59 +917,58 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
           <div className="pt-1.5" data-testid="sidebar-tab-content">
             {activeTabContent.kind === 'flat' && activeTabContent.threads.map((t) => renderThreadItem(t))}
 
-            {activeTabContent.kind === 'project' &&
-              threadGroups.length > 0 && (
-                <div
-                  className="flex items-center justify-between px-3 py-1 text-micro text-cafe-muted"
-                  data-testid="project-toolbar"
-                >
-                  <span>{threadGroups.length} 个项目</span>
-                  <div className="flex items-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={expandAll}
-                      className="flex items-center justify-center rounded p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
-                      data-testid="expand-all-btn"
-                      aria-label="展开全部项目"
-                      title="展开全部"
+            {activeTabContent.kind === 'project' && threadGroups.length > 0 && (
+              <div
+                className="flex items-center justify-between px-3 py-1 text-micro text-cafe-muted"
+                data-testid="project-toolbar"
+              >
+                <span>{threadGroups.length} 个项目</span>
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={expandAll}
+                    className="flex items-center justify-center rounded p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                    data-testid="expand-all-btn"
+                    aria-label="展开全部项目"
+                    title="展开全部"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <svg
-                        aria-hidden="true"
-                        className="h-3.5 w-3.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M6 9l6 6 6-6" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={collapseAll}
-                      className="flex items-center justify-center rounded p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
-                      data-testid="collapse-all-btn"
-                      aria-label="折叠全部项目"
-                      title="折叠全部"
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={collapseAll}
+                    className="flex items-center justify-center rounded p-1 text-cafe-muted transition-colors hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent"
+                    data-testid="collapse-all-btn"
+                    aria-label="折叠全部项目"
+                    title="折叠全部"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <svg
-                        aria-hidden="true"
-                        className="h-3.5 w-3.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M18 15l-6-6-6 6" />
-                      </svg>
-                    </button>
-                  </div>
+                      <path d="M18 15l-6-6-6 6" />
+                    </svg>
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
 
             {activeTabContent.kind === 'project' &&
               threadGroups.map((group) => {
