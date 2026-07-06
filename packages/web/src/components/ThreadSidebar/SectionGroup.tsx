@@ -1,6 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useIMEGuard } from '@/hooks/useIMEGuard';
 
+/** Detect OS for the "reveal in file manager" menu label. Returns a label + icon kind.
+ *  Client-only — this component's context menu only renders after a user click, so
+ *  navigator is always available here. */
+function getRevealLabel(): { label: string; kind: 'finder' | 'explorer' | 'files' } {
+  if (typeof navigator === 'undefined') return { label: '在文件管理器中打开', kind: 'files' };
+  const ua = navigator.userAgent || '';
+  if (ua.includes('Win')) return { label: '在资源管理器中打开', kind: 'explorer' };
+  if (ua.includes('Mac')) return { label: '在 Finder 中打开', kind: 'finder' };
+  return { label: '在文件管理器中打开', kind: 'files' };
+}
+
 /** F070: governance status dot colors */
 const GOV_STATUS_DOT: Record<string, { color: string; title: string }> = {
   healthy: { color: 'bg-conn-emerald-text', title: '治理正常' },
@@ -213,17 +224,23 @@ export function SectionGroup({
                 onOpenInFinder();
                 setShowMenu(false);
               }}
+              icon={<FolderMenuIcon />}
             >
-              在 Finder 中打开
+              {getRevealLabel().label}
             </MenuItem>
           )}
-          {onRenameProject && <MenuItem onClick={startRename}>编辑名称</MenuItem>}
+          {onRenameProject && (
+            <MenuItem onClick={startRename} icon={<RenameMenuIcon />}>
+              编辑名称
+            </MenuItem>
+          )}
           {onArchiveThreads && (
             <MenuItem
               onClick={() => {
                 onArchiveThreads();
                 setShowMenu(false);
               }}
+              icon={<ArchiveMenuIcon />}
               danger
             >
               归档所有对话
@@ -295,6 +312,64 @@ function PinMenuIcon({ active }: { active?: boolean }) {
     </svg>
   );
 }
+
+/** Folder icon for the "reveal in file manager" menu item. */
+function FolderMenuIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-3 w-3 flex-shrink-0 text-cafe-muted"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 20a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2z" />
+    </svg>
+  );
+}
+
+/** Pencil icon for the "rename" menu item. */
+function RenameMenuIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-3 w-3 flex-shrink-0 text-cafe-muted"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </svg>
+  );
+}
+
+/** Archive box icon for the "archive threads" menu item. */
+function ArchiveMenuIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-3 w-3 flex-shrink-0 text-cafe-muted"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 8v13H3V8" />
+      <path d="M1 3h22v5H1z" />
+      <path d="M10 12h4" />
+    </svg>
+  );
+}
+
 
 /** Small icon button used for pin / quick-create / menu actions. */
 function ActionButton({
