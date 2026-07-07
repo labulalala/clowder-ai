@@ -107,8 +107,20 @@ describe('ThreadSidebar v9 tab redesign', () => {
     Object.assign(mockStore, {
       threads: [
         makeThread({ id: 'default', title: '大厅', lastActiveAt: NOW }),
-        makeThread({ id: 'pinned-a', title: 'Pinned A', pinned: true, projectPath: '/proj/a', lastActiveAt: NOW - 1_000 }),
-        makeThread({ id: 'pinned-b', title: 'Pinned B', pinned: true, projectPath: '/proj/b', lastActiveAt: NOW - 2_000 }),
+        makeThread({
+          id: 'pinned-a',
+          title: 'Pinned A',
+          pinned: true,
+          projectPath: '/proj/a',
+          lastActiveAt: NOW - 1_000,
+        }),
+        makeThread({
+          id: 'pinned-b',
+          title: 'Pinned B',
+          pinned: true,
+          projectPath: '/proj/b',
+          lastActiveAt: NOW - 2_000,
+        }),
         makeThread({ id: 'regular', title: 'Regular', projectPath: '/proj/a', lastActiveAt: NOW - 3_000 }),
       ],
     });
