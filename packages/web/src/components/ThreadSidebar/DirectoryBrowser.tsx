@@ -121,14 +121,15 @@ function shouldFallbackToHome(fallbackOnForbidden: boolean, path: string | undef
 /**
  * F113 drive-picker state: tracks whether we're showing the drives grid vs a
  * directory listing, and lazily loads the Windows drive list on first entry.
- * "此电脑" entry is gated by isWindows (detected via userAgent) so macOS/Linux
- * are unaffected — drive letters are a Windows concept.
+ * "此电脑" entry is gated by isWindowsServer (the API server's filesystem
+ * platform, derived from the browsed path) — NOT the browser client's UA — so
+ * a macOS/Linux client browsing a Windows-hosted server still gets drive
+ * switching, and a Windows client against a non-Windows server sees no picker.
  */
-function useDrivesLoader() {
+function useDrivesLoader(isWindowsServer: boolean) {
   const [view, setView] = useState<'directory' | 'drives'>('directory');
   const [drives, setDrives] = useState<DriveInfo[]>([]);
   const drivesLoadedRef = useRef(false);
-  const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent);
 
   // Lazily fetch drives only when the user enters the drives view — keeps
   // mount-time API calls unchanged for the common directory-browsing path.
@@ -154,7 +155,7 @@ function useDrivesLoader() {
   return {
     view,
     drives,
-    showThisPcEntry: isWindows,
+    showThisPcEntry: isWindowsServer,
     showDrivesView,
     showDirectoryView,
   };
@@ -176,7 +177,11 @@ export function DirectoryBrowser({
   const [newDirName, setNewDirName] = useState('');
   const [mkdirError, setMkdirError] = useState<string | null>(null);
   const newDirInputRef = useRef<HTMLInputElement>(null);
-  const { view, drives, showThisPcEntry, showDrivesView, showDirectoryView } = useDrivesLoader();
+  // Gate "此电脑" on the SERVER's filesystem platform (derived from the browsed
+  // path), not the browser client's userAgent — a macOS client browsing a
+  // Windows-hosted server still needs drive switching (codex review P2).
+  const isWindowsServer = browseResult?.current ? /^[A-Za-z]:[\\/]/.test(browseResult.current) : false;
+  const { view, drives, showThisPcEntry, showDrivesView, showDirectoryView } = useDrivesLoader(isWindowsServer);
 
   const fetchDirectory = useCallback(
     async (path?: string, fallbackOnForbidden = false) => {
@@ -326,18 +331,20 @@ export function DirectoryBrowser({
             </span>
           );
         })}
-        {/* [+] New folder button */}
-        <button
-          type="button"
-          onClick={handleStartCreateDir}
-          className="ml-auto flex-shrink-0 px-2 py-1 flex items-center gap-1 rounded-md border border-cafe-accent/30 bg-cafe-surface/50 text-cafe-accent hover:bg-cafe-surface hover:border-cafe-accent/50 transition-colors text-xs font-medium"
-          title="新建文件夹"
-        >
-          <svg aria-hidden="true" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
-          </svg>
-          新建
-        </button>
+        {/* [+] New folder button — hidden in drives view (no current dir, codex review P2) */}
+        {view !== 'drives' && (
+          <button
+            type="button"
+            onClick={handleStartCreateDir}
+            className="ml-auto flex-shrink-0 px-2 py-1 flex items-center gap-1 rounded-md border border-cafe-accent/30 bg-cafe-surface/50 text-cafe-accent hover:bg-cafe-surface hover:border-cafe-accent/50 transition-colors text-xs font-medium"
+            title="新建文件夹"
+          >
+            <svg aria-hidden="true" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
+            </svg>
+            新建
+          </button>
+        )}
       </div>
 
       {/* ── Directory listing ── */}
