@@ -108,25 +108,6 @@ function pathToSegments(absPath: string, homePath: string): { label: string; pat
   return segments;
 }
 
-/**
- * Detect whether an absolute path is a Windows drive root (e.g. "C:\").
- * Drive roots are special: win32.dirname returns the drive itself, so there is
- * no "parent" to traverse up from. The only way across drives is via the
- * "此电脑" drive-picker view.
- */
-function isWindowsDriveRoot(absPath: string): boolean {
-  return /^[A-Za-z]:[\\/]$/.test(absPath);
-}
-
-/**
- * Format the label for a drive root in breadcrumbs, e.g. "C:\" → "本地磁盘 (C:)".
- * Falls back to the raw path if no drive info matches.
- */
-function driveRootLabel(absPath: string, drives: DriveInfo[]): string {
-  const match = drives.find((d) => d.path.toLowerCase() === absPath.toLowerCase());
-  return match?.label ?? absPath;
-}
-
 /** Build the browse API URL for an optional path argument. */
 function buildBrowseUrl(path?: string): string {
   return path ? `/api/projects/browse?path=${encodeURIComponent(path)}` : '/api/projects/browse';
@@ -305,12 +286,13 @@ export function DirectoryBrowser({
           </span>
         )}
         {segments.map((seg, i) => {
-          // Drive-root segments (e.g. "D:\") show the friendly drive label
-          // (e.g. "本地磁盘 (D:)") whether or not they're the current leaf —
-          // so the breadcrumb reads "此电脑 > 本地磁盘 (D:) > XXX" throughout.
+          // VS Code-style breadcrumb: drive root shows "D:" (no trailing
+          // separator, no friendly label), subdirectories show their name.
+          // seg.label is already "D:" for drive roots (windowsDriveSegments
+          // strips the separator) and the dir name otherwise — using it
+          // directly avoids depending on the lazily-loaded drives list.
           const isLast = i === segments.length - 1;
-          const isDriveSeg = isWindowsDriveRoot(seg.path);
-          const label = isDriveSeg ? driveRootLabel(seg.path, drives) : seg.label;
+          const label = seg.label;
           const showSeparator = showThisPcEntry || i > 0;
           return (
             <span key={seg.path || `_${i}`} className="flex items-center gap-1 flex-shrink-0">

@@ -298,8 +298,8 @@ describe('DirectoryBrowser', () => {
   });
 
   it('shows the drive letter as a breadcrumb segment for Windows drive paths outside home', async () => {
-    // F113: a path like D:\XXX must render "此电脑 > 本地磁盘 (D:) > XXX",
-    // not skip the drive layer. homePath is on C: so D: is outside home.
+    // F113: a path like D:\XXX must render "此电脑 > D: > XXX" (VS Code style:
+    // drive letter without trailing separator). homePath is on C: so D: is outside home.
     const winHome = 'C:\\Users\\test';
     const driveRoot = 'D:\\';
     mockApiFetch.mockReturnValueOnce(
@@ -320,8 +320,10 @@ describe('DirectoryBrowser', () => {
 
     // The drive root must appear as its own breadcrumb segment so the user
     // can click back to D:\. Without the fix, only "Projects" showed.
-    const driveButton = getAllButtons().find((b) => b.textContent?.includes('D'));
+    const driveButton = getAllButtons().find((b) => b.textContent?.includes('D:'));
     expect(driveButton).toBeTruthy();
+    // Drive label is "D:" (no trailing backslash) — never the raw "D:\"
+    expect(driveButton?.textContent).not.toContain('\\');
     // And the leaf folder is still present
     expect(container.textContent).toContain('Projects');
   });
