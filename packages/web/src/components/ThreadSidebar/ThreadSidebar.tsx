@@ -915,12 +915,23 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                 onClick={() => scrollTabs('left')}
                 disabled={!canScrollLeft}
                 className={`flex flex-shrink-0 items-center justify-center w-5 rounded-t-md text-cafe-muted transition-all ${
-                  canScrollLeft ? 'hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent' : 'pointer-events-none opacity-0'
+                  canScrollLeft
+                    ? 'hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent'
+                    : 'pointer-events-none opacity-0'
                 }`}
                 aria-label="向左滚动"
                 data-testid="sidebar-tab-scroll-left"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                >
                   <path d="M15 18l-6-6 6-6" />
                 </svg>
               </button>
@@ -959,12 +970,23 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                 onClick={() => scrollTabs('right')}
                 disabled={!canScrollRight}
                 className={`flex flex-shrink-0 items-center justify-center w-5 rounded-t-md text-cafe-muted transition-all ${
-                  canScrollRight ? 'hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent' : 'pointer-events-none opacity-0'
+                  canScrollRight
+                    ? 'hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent'
+                    : 'pointer-events-none opacity-0'
                 }`}
                 aria-label="向右滚动"
                 data-testid="sidebar-tab-scroll-right"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                >
                   <path d="M9 6l6 6-6 6" />
                 </svg>
               </button>
