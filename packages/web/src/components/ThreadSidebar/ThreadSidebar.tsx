@@ -730,16 +730,16 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
   // V9 sidebar tabs: keep grouping derived from filtered thread data.
   const { pinnedProjects, toggleProjectPin } = useProjectPins();
   const tabs = useMemo(
-    () => buildSidebarTabs(labelFilteredThreads, pinnedProjects),
-    [labelFilteredThreads, pinnedProjects],
+    () => buildSidebarTabs(labelFilteredThreads, pinnedProjects, unreadIds),
+    [labelFilteredThreads, pinnedProjects, unreadIds],
   );
   const activeTabContent = useMemo(
-    () => buildSidebarTabContent(activeTab, labelFilteredThreads, pinnedProjects),
-    [activeTab, labelFilteredThreads, pinnedProjects],
+    () => buildSidebarTabContent(activeTab, labelFilteredThreads, pinnedProjects, unreadIds),
+    [activeTab, labelFilteredThreads, pinnedProjects, unreadIds],
   );
   const projectThreadGroups = useMemo(
-    () => buildSidebarTabContent('project', labelFilteredThreads, pinnedProjects).projectGroups ?? [],
-    [labelFilteredThreads, pinnedProjects],
+    () => buildSidebarTabContent('project', labelFilteredThreads, pinnedProjects, unreadIds).projectGroups ?? [],
+    [labelFilteredThreads, pinnedProjects, unreadIds],
   );
   const threadGroups = activeTab === 'project' ? projectThreadGroups : [];
 

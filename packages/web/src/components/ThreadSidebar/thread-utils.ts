@@ -101,17 +101,34 @@ function titleForSort(thread: Thread): string {
   return thread.title ?? (thread.id === 'default' ? '大厅' : '未命名对话');
 }
 
-function sortPinnedThenActive(a: Thread, b: Thread): number {
+/**
+ * Sort comparator: pinned first, then unread, then by lastActiveAt descending.
+ * Preserves the unread-first visibility that the pre-tab sidebar had via
+ * `sortByUnreadThenActive`, but with pin taking precedence (matches the
+ * tab helpers' existing pin-first contract).
+ */
+function sortPinnedUnreadActive(a: Thread, b: Thread, unreadIds: Set<string>): number {
   const aPinned = a.pinned ? 1 : 0;
   const bPinned = b.pinned ? 1 : 0;
   if (aPinned !== bPinned) return bPinned - aPinned;
+  const aUnread = unreadIds.has(a.id) ? 1 : 0;
+  const bUnread = unreadIds.has(b.id) ? 1 : 0;
+  if (aUnread !== bUnread) return bUnread - aUnread;
   return b.lastActiveAt - a.lastActiveAt;
 }
 
-function sortPinnedThenTitle(a: Thread, b: Thread): number {
+/**
+ * Sort comparator: pinned first, then unread, then by title.
+ * Unread-first within the title-sorted tabs (System/Favorites/Project) so an
+ * unread thread is not buried below read threads sharing the same pin state.
+ */
+function sortPinnedUnreadTitle(a: Thread, b: Thread, unreadIds: Set<string>): number {
   const aPinned = a.pinned ? 1 : 0;
   const bPinned = b.pinned ? 1 : 0;
   if (aPinned !== bPinned) return bPinned - aPinned;
+  const aUnread = unreadIds.has(a.id) ? 1 : 0;
+  const bUnread = unreadIds.has(b.id) ? 1 : 0;
+  if (aUnread !== bUnread) return bUnread - aUnread;
   return titleForSort(a).localeCompare(titleForSort(b), 'zh-Hans-CN');
 }
 
@@ -119,33 +136,35 @@ function nonDefaultThreads(threads: Thread[]): Thread[] {
   return threads.filter((thread) => thread.id !== 'default');
 }
 
-function tabPinnedThreads(threads: Thread[]): Thread[] {
+function tabPinnedThreads(threads: Thread[], unreadIds: Set<string>): Thread[] {
   // Pinned tab — flat view of all pinned threads (additive: still appears in recent/project).
   return nonDefaultThreads(threads)
     .filter((thread) => thread.pinned)
-    .sort((a, b) => b.lastActiveAt - a.lastActiveAt);
+    .sort((a, b) => sortPinnedUnreadActive(a, b, unreadIds));
 }
 
-function tabRecentThreads(threads: Thread[]): Thread[] {
+function tabRecentThreads(threads: Thread[], unreadIds: Set<string>): Thread[] {
   // Demo spec (sidebar-proposals.html line 200/848): 对话置顶 = 最近 Tab + 当前 Tab 双重置顶.
   // A pinned system thread must still appear in the recent tab (additive, not exclusive).
   // Unpinned system threads stay only in the system tab.
   return nonDefaultThreads(threads)
     .filter((thread) => thread.pinned || !isSystemThread(thread))
-    .sort(sortPinnedThenActive);
+    .sort((a, b) => sortPinnedUnreadActive(a, b, unreadIds));
 }
 
-function tabSystemThreads(threads: Thread[]): Thread[] {
-  return nonDefaultThreads(threads).filter(isSystemThread).sort(sortPinnedThenTitle);
+function tabSystemThreads(threads: Thread[], unreadIds: Set<string>): Thread[] {
+  return nonDefaultThreads(threads)
+    .filter(isSystemThread)
+    .sort((a, b) => sortPinnedUnreadTitle(a, b, unreadIds));
 }
 
-function tabFavoriteThreads(threads: Thread[]): Thread[] {
+function tabFavoriteThreads(threads: Thread[], unreadIds: Set<string>): Thread[] {
   return nonDefaultThreads(threads)
     .filter((thread) => thread.favorited)
-    .sort(sortPinnedThenTitle);
+    .sort((a, b) => sortPinnedUnreadTitle(a, b, unreadIds));
 }
 
-function tabProjectGroups(threads: Thread[], pinnedProjects: Set<string>): ThreadGroup[] {
+function tabProjectGroups(threads: Thread[], pinnedProjects: Set<string>, unreadIds: Set<string>): ThreadGroup[] {
   const grouped = new Map<string, Thread[]>();
   for (const thread of nonDefaultThreads(threads)) {
     if (isSystemThread(thread)) continue;
@@ -159,7 +178,7 @@ function tabProjectGroups(threads: Thread[], pinnedProjects: Set<string>): Threa
       type: 'project' as const,
       label: projectDisplayName(projectPath),
       projectPath,
-      threads: projectThreads.sort(sortPinnedThenTitle),
+      threads: projectThreads.sort((a, b) => sortPinnedUnreadTitle(a, b, unreadIds)),
     }))
     .sort((a, b) => {
       const aPinned = pinnedProjects.has(a.projectPath ?? '') ? 1 : 0;
@@ -171,14 +190,21 @@ function tabProjectGroups(threads: Thread[], pinnedProjects: Set<string>): Threa
     });
 }
 
-export function buildSidebarTabs(threads: Thread[], pinnedProjects: Set<string> = new Set()): SidebarTab[] {
-  const projectCount = tabProjectGroups(threads, pinnedProjects).reduce((sum, group) => sum + group.threads.length, 0);
+export function buildSidebarTabs(
+  threads: Thread[],
+  pinnedProjects: Set<string> = new Set(),
+  unreadIds: Set<string> = new Set(),
+): SidebarTab[] {
+  const projectCount = tabProjectGroups(threads, pinnedProjects, unreadIds).reduce(
+    (sum, group) => sum + group.threads.length,
+    0,
+  );
   return [
-    { id: 'pinned', label: '置顶', count: tabPinnedThreads(threads).length },
-    { id: 'recent', label: '最近', count: tabRecentThreads(threads).length },
+    { id: 'pinned', label: '置顶', count: tabPinnedThreads(threads, unreadIds).length },
+    { id: 'recent', label: '最近', count: tabRecentThreads(threads, unreadIds).length },
     { id: 'project', label: '项目', count: projectCount },
-    { id: 'system', label: '系统', count: tabSystemThreads(threads).length },
-    { id: 'favorites', label: '收藏', count: tabFavoriteThreads(threads).length },
+    { id: 'system', label: '系统', count: tabSystemThreads(threads, unreadIds).length },
+    { id: 'favorites', label: '收藏', count: tabFavoriteThreads(threads, unreadIds).length },
   ];
 }
 
@@ -186,21 +212,22 @@ export function buildSidebarTabContent(
   tabId: SidebarTabId,
   threads: Thread[],
   pinnedProjects: Set<string> = new Set(),
+  unreadIds: Set<string> = new Set(),
 ): SidebarThreadBucket {
   if (tabId === 'pinned') {
-    return { kind: 'flat', threads: tabPinnedThreads(threads) };
+    return { kind: 'flat', threads: tabPinnedThreads(threads, unreadIds) };
   }
   if (tabId === 'project') {
-    const projectGroups = tabProjectGroups(threads, pinnedProjects);
+    const projectGroups = tabProjectGroups(threads, pinnedProjects, unreadIds);
     return { kind: 'project', threads: projectGroups.flatMap((group) => group.threads), projectGroups };
   }
   if (tabId === 'system') {
-    return { kind: 'flat', threads: tabSystemThreads(threads) };
+    return { kind: 'flat', threads: tabSystemThreads(threads, unreadIds) };
   }
   if (tabId === 'favorites') {
-    return { kind: 'flat', threads: tabFavoriteThreads(threads) };
+    return { kind: 'flat', threads: tabFavoriteThreads(threads, unreadIds) };
   }
-  return { kind: 'flat', threads: tabRecentThreads(threads) };
+  return { kind: 'flat', threads: tabRecentThreads(threads, unreadIds) };
 }
 
 /**

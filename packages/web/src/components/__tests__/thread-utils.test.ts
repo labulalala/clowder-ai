@@ -569,4 +569,39 @@ describe('sidebar tab selectors', () => {
     expect(content.projectGroups?.[0].threads.map((thread) => thread.id)).toEqual(['pinned', 'regular-new']);
     expect(content.projectGroups?.[1].threads.map((thread) => thread.id)).toEqual(['regular-old', 'fav']);
   });
+
+  // Regression: unread-first ordering must survive the tab rewrite.
+  // The pre-tab sidebar sorted unread threads before read ones inside each
+  // group; the new tab selectors must preserve that or an older unread thread
+  // gets buried below a newer read one. Covers maintainer review on PR #1095.
+  it('recent tab puts unread threads before read threads regardless of activity', () => {
+    const threads = [
+      makeThread({ id: 'default', title: '大厅', lastActiveAt: NOW }),
+      makeThread({ id: 'read-new', title: 'Read New', projectPath: '/proj/a', lastActiveAt: NOW - 1_000 }),
+      makeThread({ id: 'unread-old', title: 'Unread Old', projectPath: '/proj/a', lastActiveAt: NOW - DAY }),
+    ];
+    const unreadIds = new Set(['unread-old']);
+
+    // Without unreadIds: read-new first (newer activity wins)
+    const noUnread = buildSidebarTabContent('recent', threads, new Set(), new Set());
+    expect(noUnread.threads.map((t) => t.id)).toEqual(['read-new', 'unread-old']);
+
+    // With unreadIds: unread-old first (unread takes precedence over activity)
+    const withUnread = buildSidebarTabContent('recent', threads, new Set(), unreadIds);
+    expect(withUnread.threads.map((t) => t.id)).toEqual(['unread-old', 'read-new']);
+  });
+
+  it('project tab sorts unread threads before read threads within a group', () => {
+    const threads = [
+      makeThread({ id: 'default', title: '大厅', lastActiveAt: NOW }),
+      makeThread({ id: 'read-new', title: 'Read New', projectPath: '/proj/a', lastActiveAt: NOW - 1_000 }),
+      makeThread({ id: 'unread-old', title: 'Unread Old', projectPath: '/proj/a', lastActiveAt: NOW - DAY }),
+    ];
+    const unreadIds = new Set(['unread-old']);
+
+    const content = buildSidebarTabContent('project', threads, new Set(), unreadIds);
+    expect(content.kind).toBe('project');
+    // Within /proj/a: unread-old before read-new, despite read-new being newer
+    expect(content.projectGroups?.[0].threads.map((t) => t.id)).toEqual(['unread-old', 'read-new']);
+  });
 });
