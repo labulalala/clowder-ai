@@ -529,12 +529,19 @@ describe('sidebar tab selectors', () => {
     makeThread({ id: 'system', title: 'System', systemKind: 'eval_domain', lastActiveAt: NOW - 4 * DAY }),
   ];
 
-  it('builds tabs in the v9 order with non-default counts', () => {
+  it('builds tabs with pinned first, then recent/project/system/favorites', () => {
     const tabs = buildSidebarTabs(tabThreads);
     const tabIds: SidebarTabId[] = tabs.map((tab) => tab.id);
-    expect(tabIds).toEqual(['recent', 'project', 'system', 'favorites']);
-    expect(tabs.map((tab) => tab.label)).toEqual(['最近', '项目', '系统', '收藏']);
-    expect(tabs.map((tab) => tab.count)).toEqual([4, 4, 1, 1]);
+    expect(tabIds).toEqual(['pinned', 'recent', 'project', 'system', 'favorites']);
+    expect(tabs.map((tab) => tab.label)).toEqual(['置顶', '最近', '项目', '系统', '收藏']);
+    // pinned tab has 1 (the pinned thread); recent still includes it (additive) so stays 4
+    expect(tabs.map((tab) => tab.count)).toEqual([1, 4, 4, 1, 1]);
+  });
+
+  it('pinned tab is a flat view of pinned threads sorted by lastActiveAt desc', () => {
+    const content = buildSidebarTabContent('pinned', tabThreads, new Set());
+    expect(content.kind).toBe('flat');
+    expect(content.threads.map((thread) => thread.id)).toEqual(['pinned']);
   });
 
   it('recent tab excludes lobby and system threads, then sorts pinned first and activity desc', () => {

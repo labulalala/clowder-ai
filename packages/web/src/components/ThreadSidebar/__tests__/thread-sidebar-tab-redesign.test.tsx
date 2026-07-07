@@ -88,7 +88,7 @@ describe('ThreadSidebar v9 tab redesign', () => {
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     const tabs = Array.from(harness.container.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent?.trim());
-    expect(tabs).toEqual(['最近3', '项目3', '系统1', '收藏1']);
+    expect(tabs).toEqual(['置顶0', '最近3', '项目3', '系统1', '收藏1']);
   });
 
   it('switches isolated tab content without mixing system/project/favorite views', async () => {
@@ -101,6 +101,25 @@ describe('ThreadSidebar v9 tab redesign', () => {
 
     await clickTab(harness.container, 'favorites', harness.flush);
     expect(visibleThreadIds(harness.container)).toEqual(['default', 'favorite']);
+  });
+
+  it('shows pinned threads in an isolated pinned tab while recent stays additive', async () => {
+    Object.assign(mockStore, {
+      threads: [
+        makeThread({ id: 'default', title: '大厅', lastActiveAt: NOW }),
+        makeThread({ id: 'pinned-a', title: 'Pinned A', pinned: true, projectPath: '/proj/a', lastActiveAt: NOW - 1_000 }),
+        makeThread({ id: 'pinned-b', title: 'Pinned B', pinned: true, projectPath: '/proj/b', lastActiveAt: NOW - 2_000 }),
+        makeThread({ id: 'regular', title: 'Regular', projectPath: '/proj/a', lastActiveAt: NOW - 3_000 }),
+      ],
+    });
+    await harness.render();
+
+    // Recent tab is additive — pinned threads still appear (sorted first by activity desc)
+    expect(visibleThreadIds(harness.container)).toEqual(['default', 'pinned-a', 'pinned-b', 'regular']);
+
+    // Pinned tab shows only pinned threads
+    await clickTab(harness.container, 'pinned', harness.flush);
+    expect(visibleThreadIds(harness.container)).toEqual(['default', 'pinned-a', 'pinned-b']);
   });
 
   it('shows separate expand/collapse buttons in a project toolbar below the tabs', async () => {

@@ -50,7 +50,7 @@ export interface ThreadGroup {
   archivedGroups?: ThreadGroup[];
 }
 
-export type SidebarTabId = 'recent' | 'project' | 'system' | 'favorites';
+export type SidebarTabId = 'pinned' | 'recent' | 'project' | 'system' | 'favorites';
 
 export interface SidebarTab {
   id: SidebarTabId;
@@ -119,6 +119,13 @@ function nonDefaultThreads(threads: Thread[]): Thread[] {
   return threads.filter((thread) => thread.id !== 'default');
 }
 
+function tabPinnedThreads(threads: Thread[]): Thread[] {
+  // Pinned tab — flat view of all pinned threads (additive: still appears in recent/project).
+  return nonDefaultThreads(threads)
+    .filter((thread) => thread.pinned)
+    .sort((a, b) => b.lastActiveAt - a.lastActiveAt);
+}
+
 function tabRecentThreads(threads: Thread[]): Thread[] {
   // Demo spec (sidebar-proposals.html line 200/848): 对话置顶 = 最近 Tab + 当前 Tab 双重置顶.
   // A pinned system thread must still appear in the recent tab (additive, not exclusive).
@@ -167,6 +174,7 @@ function tabProjectGroups(threads: Thread[], pinnedProjects: Set<string>): Threa
 export function buildSidebarTabs(threads: Thread[], pinnedProjects: Set<string> = new Set()): SidebarTab[] {
   const projectCount = tabProjectGroups(threads, pinnedProjects).reduce((sum, group) => sum + group.threads.length, 0);
   return [
+    { id: 'pinned', label: '置顶', count: tabPinnedThreads(threads).length },
     { id: 'recent', label: '最近', count: tabRecentThreads(threads).length },
     { id: 'project', label: '项目', count: projectCount },
     { id: 'system', label: '系统', count: tabSystemThreads(threads).length },
@@ -179,6 +187,9 @@ export function buildSidebarTabContent(
   threads: Thread[],
   pinnedProjects: Set<string> = new Set(),
 ): SidebarThreadBucket {
+  if (tabId === 'pinned') {
+    return { kind: 'flat', threads: tabPinnedThreads(threads) };
+  }
   if (tabId === 'project') {
     const projectGroups = tabProjectGroups(threads, pinnedProjects);
     return { kind: 'project', threads: projectGroups.flatMap((group) => group.threads), projectGroups };

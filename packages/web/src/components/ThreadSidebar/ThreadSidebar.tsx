@@ -15,6 +15,7 @@ import { readProjectNames, writeProjectNames } from './active-workspace';
 import { DirectoryPickerModal, type NewThreadOptions } from './DirectoryPickerModal';
 import { LabelFilterBar } from './LabelFilterBar';
 import { SectionGroup } from './SectionGroup';
+import { SidebarTabIcon } from './SidebarTabIcon';
 import { ThreadItem } from './ThreadItem';
 import { ThreadOrganizerModal } from './ThreadOrganizerModal';
 import { pushThreadRouteWithHistory } from './thread-navigation';
@@ -78,6 +79,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
   // F095 Phase E: scroll anchor for reorder stability
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Record<SidebarTabId, HTMLButtonElement | null>>({
+    pinned: null,
     recent: null,
     project: null,
     system: null,
@@ -906,6 +908,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                     }`}
                     data-testid={`sidebar-tab-${tab.id}`}
                   >
+                    <SidebarTabIcon id={tab.id} className="h-3.5 w-3.5 shrink-0" />
                     <span>{tab.label}</span>
                     <span className={activeTab === tab.id ? 'text-cafe-accent' : 'text-cafe-muted'}>{tab.count}</span>
                   </button>
