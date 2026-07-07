@@ -85,6 +85,9 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
     system: null,
     favorites: null,
   });
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   // F095 Phase F: custom project display names
   const [projectNames, setProjectNames] = useState(() =>
     readProjectNames(typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} }),
@@ -739,6 +742,28 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
     [labelFilteredThreads, pinnedProjects],
   );
   const threadGroups = activeTab === 'project' ? projectThreadGroups : [];
+
+  // Tab overflow scroll: show arrow buttons when tabs overflow the row
+  const updateTabScrollState = useCallback(() => {
+    const el = tabScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 1);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+  }, []);
+
+  const scrollTabs = useCallback((dir: 'left' | 'right') => {
+    tabScrollRef.current?.scrollBy({ left: dir === 'left' ? -120 : 120, behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    updateTabScrollState();
+  }, [tabs, updateTabScrollState]);
+
+  useEffect(() => {
+    window.addEventListener('resize', updateTabScrollState);
+    return () => window.removeEventListener('resize', updateTabScrollState);
+  }, [updateTabScrollState]);
+
   const existingProjects = useMemo(() => getProjectPaths(liveThreads), [liveThreads]);
   const showDefaultThread = (normalizedQuery.length === 0 || '大厅'.includes(normalizedQuery)) && !labelFilter;
 
@@ -882,11 +907,27 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
 
           {tabs.length > 0 && (
             <div
-              className="sticky top-0 z-10 flex items-stretch gap-1 border-b border-cafe-subtle bg-[var(--console-panel-bg)] pt-2 pl-3 pr-2"
+              className="sticky top-0 z-10 flex items-stretch gap-1 border-b border-cafe-subtle bg-[var(--console-panel-bg)] pt-2 pl-1 pr-1"
               data-testid="sidebar-tabs-row"
             >
+              <button
+                type="button"
+                onClick={() => scrollTabs('left')}
+                disabled={!canScrollLeft}
+                className={`flex flex-shrink-0 items-center justify-center w-5 rounded-t-md text-cafe-muted transition-all ${
+                  canScrollLeft ? 'hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent' : 'pointer-events-none opacity-0'
+                }`}
+                aria-label="向左滚动"
+                data-testid="sidebar-tab-scroll-left"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
               <div
-                className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto overflow-y-hidden px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,transparent,#000_8px,#000_calc(100%-8px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,#000_8px,#000_calc(100%-8px),transparent)]"
+                ref={tabScrollRef}
+                onScroll={updateTabScrollState}
+                className="flex min-w-0 flex-1 gap-0 overflow-x-auto overflow-y-hidden px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 role="tablist"
                 aria-label="对话分类"
                 data-testid="sidebar-tabs-scroll"
@@ -901,7 +942,7 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                     role="tab"
                     aria-selected={activeTab === tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex flex-shrink-0 items-center gap-1 rounded-t-md border-b-2 px-2 py-1.5 text-micro font-medium transition-colors ${
+                    className={`flex flex-shrink-0 items-center gap-1 rounded-t-md border-b-2 px-1 py-1.5 text-micro font-medium transition-colors ${
                       activeTab === tab.id
                         ? 'border-cafe-accent text-cafe-accent'
                         : 'border-transparent text-cafe-muted hover:bg-[var(--console-hover-bg)] hover:text-cafe-secondary'
@@ -910,14 +951,27 @@ export function ThreadSidebar({ onClose, className }: ThreadSidebarProps) {
                   >
                     <SidebarTabIcon id={tab.id} className="h-3.5 w-3.5 shrink-0" />
                     <span>{tab.label}</span>
-                    <span className={activeTab === tab.id ? 'text-cafe-accent' : 'text-cafe-muted'}>{tab.count}</span>
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={() => scrollTabs('right')}
+                disabled={!canScrollRight}
+                className={`flex flex-shrink-0 items-center justify-center w-5 rounded-t-md text-cafe-muted transition-all ${
+                  canScrollRight ? 'hover:bg-[var(--console-hover-bg)] hover:text-cafe-accent' : 'pointer-events-none opacity-0'
+                }`}
+                aria-label="向右滚动"
+                data-testid="sidebar-tab-scroll-right"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </button>
             </div>
           )}
 
-          <div className="pt-1.5" data-testid="sidebar-tab-content">
+          <div className="space-y-1 pt-1.5" data-testid="sidebar-tab-content">
             {activeTabContent.kind === 'flat' && activeTabContent.threads.map((t) => renderThreadItem(t))}
 
             {activeTabContent.kind === 'project' && threadGroups.length > 0 && (

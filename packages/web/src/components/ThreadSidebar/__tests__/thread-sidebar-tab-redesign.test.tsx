@@ -88,7 +88,7 @@ describe('ThreadSidebar v9 tab redesign', () => {
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     const tabs = Array.from(harness.container.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent?.trim());
-    expect(tabs).toEqual(['置顶0', '最近3', '项目3', '系统1', '收藏1']);
+    expect(tabs).toEqual(['置顶', '最近', '项目', '系统', '收藏']);
   });
 
   it('switches isolated tab content without mixing system/project/favorite views', async () => {
