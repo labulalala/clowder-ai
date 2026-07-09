@@ -226,12 +226,17 @@ export function DirectoryBrowser({
     if (trimmed) fetchDirectory(trimmed);
   }, [pathInput, fetchDirectory]);
 
-  // Enter "此电脑" drive-picker view: clear transient error/info, then switch.
-  // showDrivesView (from useDrivesLoader) handles the actual view state + lazy
-  // drives fetch; this wrapper just resets the directory-listing banners.
+  // Enter "此电脑" drive-picker view: clear transient error/info + any
+  // in-progress create-folder state, then switch. Without clearing create-folder
+  // state, an already-open inline editor survives the transition and
+  // handleCreateDir would post parentPath from the stale previous directory
+  // (R2 review: wrong-location filesystem mutation).
   const enterDrivesView = useCallback(() => {
     setError(null);
     setInfo(null);
+    setCreatingDir(false);
+    setNewDirName('');
+    setMkdirError(null);
     showDrivesView();
   }, [showDrivesView]);
 

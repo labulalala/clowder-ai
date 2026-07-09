@@ -446,4 +446,50 @@ describe('DirectoryBrowser', () => {
     expect(mockApiFetch).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain('Cannot read directory');
   });
+
+  it('clears create-folder state when entering drives view (no stale parentPath)', async () => {
+    // Regression (R2 review): start create-folder in a directory, then enter
+    // 此电脑 drive-picker view. The inline editor + new-folder input must not
+    // survive the transition - otherwise handleCreateDir posts parentPath from
+    // the stale previous directory, a wrong-location filesystem mutation.
+    const winHome = 'C:\\Users\\test';
+    const driveRoot = 'D:\\';
+    mockApiFetch.mockReturnValueOnce(
+      jsonOk({
+        current: 'D:\\Projects',
+        name: 'Projects',
+        parent: driveRoot,
+        homePath: winHome,
+        entries: [{ name: 'src', path: 'D:\\Projects\\src', isDirectory: true }],
+      }),
+    );
+    mockApiFetch.mockReturnValueOnce(jsonOk({ drives: [{ letter: 'D', path: driveRoot, label: '本地磁盘 (D:)' }] }));
+
+    render({ initialPath: 'D:\\Projects' });
+    await flush();
+
+    // Start create-folder in D:\Projects -> inline editor opens
+    const newBtn = findButtonByText('新建');
+    expect(newBtn).toBeTruthy();
+    await act(async () => {
+      newBtn!.click();
+    });
+    // Inline editor is now visible (folder-name input rendered).
+    // Use the specific placeholder to distinguish from the path input bar.
+    const folderInput = () => container.querySelector('input[placeholder="文件夹名称..."]');
+    expect(folderInput()).toBeTruthy();
+
+    // Enter drives view ("此电脑" breadcrumb button)
+    await act(async () => {
+      const thisPc = findButtonByText('此电脑');
+      expect(thisPc).toBeTruthy();
+      thisPc!.click();
+    });
+    await flush();
+
+    // After entering drives view: no create-folder controls remain.
+    // The 新建 button is hidden AND the inline editor/input is cleared.
+    expect(findButtonByText('新建')).toBeUndefined();
+    expect(folderInput()).toBeNull();
+  });
 });
