@@ -40,10 +40,6 @@ function buildContentSecurityPolicy() {
 const nextConfig = {
   reactStrictMode: true,
   experimental: { proxyTimeout: 120_000 },
-  // Isolated dist dir for parallel dev instances (acceptance verification on a
-  // separate port). Two `next dev` processes sharing the default `.next`
-  // corrupt each other's CSS compilation. Unset → default `.next` (no change).
-  distDir: process.env.NEXT_DIST_DIR || '.next',
   // 允许 Tailscale 网段设备访问 dev server 的 /_next/* 资源
   allowedDevOrigins: ['100.0.0.0/8'],
   async headers() {
