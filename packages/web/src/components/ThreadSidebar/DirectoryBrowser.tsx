@@ -295,47 +295,48 @@ export function DirectoryBrowser({
             )}
           </span>
         )}
-        {segments.map((seg, i) => {
-          // VS Code-style breadcrumb: drive root shows "D:" (no trailing
-          // separator, no friendly label), subdirectories show their name.
-          // seg.label is already "D:" for drive roots (windowsDriveSegments
-          // strips the separator) and the dir name otherwise — using it
-          // directly avoids depending on the lazily-loaded drives list.
-          const isLast = i === segments.length - 1;
-          const label = seg.label;
-          const showSeparator = showThisPcEntry || i > 0;
-          return (
-            <span key={seg.path || `_${i}`} className="flex items-center gap-1 flex-shrink-0">
-              {showSeparator && (
-                <svg aria-hidden="true" className="w-3 h-3 text-cafe-muted" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              )}
-              {isLast ? (
-                <span className="text-xs font-semibold text-cafe-black">{label}</span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fetchDirectory(seg.path || undefined)}
-                  className="text-xs font-medium text-cafe-accent hover:underline"
-                >
-                  {i === 0 && seg.label === 'Home' ? (
-                    <span className="flex items-center gap-1">
-                      <HomeIcon />
-                      {seg.label}
-                    </span>
-                  ) : (
-                    label
-                  )}
-                </button>
-              )}
-            </span>
-          );
-        })}
+        {view !== 'drives' &&
+          segments.map((seg, i) => {
+            // VS Code-style breadcrumb: drive root shows "D:" (no trailing
+            // separator, no friendly label), subdirectories show their name.
+            // seg.label is already "D:" for drive roots (windowsDriveSegments
+            // strips the separator) and the dir name otherwise — using it
+            // directly avoids depending on the lazily-loaded drives list.
+            const isLast = i === segments.length - 1;
+            const label = seg.label;
+            const showSeparator = showThisPcEntry || i > 0;
+            return (
+              <span key={seg.path || `_${i}`} className="flex items-center gap-1 flex-shrink-0">
+                {showSeparator && (
+                  <svg aria-hidden="true" className="w-3 h-3 text-cafe-muted" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+                {isLast ? (
+                  <span className="text-xs font-semibold text-cafe-black">{label}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fetchDirectory(seg.path || undefined)}
+                    className="text-xs font-medium text-cafe-accent hover:underline"
+                  >
+                    {i === 0 && seg.label === 'Home' ? (
+                      <span className="flex items-center gap-1">
+                        <HomeIcon />
+                        {seg.label}
+                      </span>
+                    ) : (
+                      label
+                    )}
+                  </button>
+                )}
+              </span>
+            );
+          })}
         {/* [+] New folder button — hidden in drives view (no current dir, codex review P2) */}
         {view !== 'drives' && (
           <button

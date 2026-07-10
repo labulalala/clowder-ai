@@ -491,5 +491,10 @@ describe('DirectoryBrowser', () => {
     // The 新建 button is hidden AND the inline editor/input is cleared.
     expect(findButtonByText('新建')).toBeUndefined();
     expect(folderInput()).toBeNull();
+    // R2 follow-up P1: drives view must not render the stale directory
+    // breadcrumb. The old segment "Projects" (from D:\Projects) must not
+    // appear in the breadcrumb row while viewing 此电脑 (it renders as a
+    // non-button span when it is the leaf, so check textContent not buttons).
+    expect(container.textContent).not.toContain('Projects');
   });
 });
