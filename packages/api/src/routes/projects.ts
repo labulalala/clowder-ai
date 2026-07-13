@@ -99,7 +99,10 @@ export interface DriveInfo {
  * Returns [] on non-Windows platforms (single root filesystem).
  * Skips A:/B: (legacy floppy reservations) and inaccessible drives.
  */
-export function listAvailableDrives(platformName = process.platform): DriveInfo[] {
+export function listAvailableDrives(
+  platformName = process.platform,
+  probeRealpath: (root: string) => string = realpathSync,
+): DriveInfo[] {
   if (platformName !== 'win32') return [];
   const drives: DriveInfo[] = [];
   // C-Z: skip A/B (floppy legacy), probe the rest.
@@ -107,10 +110,10 @@ export function listAvailableDrives(platformName = process.platform): DriveInfo[
     const letter = String.fromCharCode(code);
     const root = `${letter}:\\`;
     try {
-      const real = realpathSync(root);
+      const real = probeRealpath(root);
       drives.push({ letter, path: real, label: `本地磁盘 (${letter}:)` });
     } catch {
-      // Drive not mounted / inaccessible — skip silently.
+      // Drive not mounted / inaccessible - skip silently.
     }
   }
   return drives;

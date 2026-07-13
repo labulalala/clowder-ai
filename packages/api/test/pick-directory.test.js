@@ -232,6 +232,38 @@ describe('listAvailableDrives()', () => {
       }
     }
   });
+
+  it('returns mounted drives and skips inaccessible ones (deterministic probe)', () => {
+    const probe = (root) => {
+      if (root === 'C:\\') return 'C:\\';
+      if (root === 'D:\\') return 'D:\\';
+      throw new Error('ENOENT');
+    };
+    const result = mod.listAvailableDrives('win32', probe);
+    assert.equal(result.length, 2);
+    assert.equal(result[0].letter, 'C');
+    assert.equal(result[0].path, 'C:\\');
+    assert.equal(result[0].label, '本地磁盘 (C:)');
+    assert.equal(result[1].letter, 'D');
+    assert.equal(result[1].path, 'D:\\');
+  });
+
+  it('returns [] when no drives are accessible (deterministic probe)', () => {
+    const probe = () => { throw new Error('ENOENT'); };
+    const result = mod.listAvailableDrives('win32', probe);
+    assert.deepEqual(result, []);
+  });
+
+  it('returns the real path resolved by the probe, not the probed root', () => {
+    // realpath may resolve junctions; returned path must be the resolved one.
+    const probe = (root) => {
+      if (root === 'C:\\') return 'C:\\';
+      throw new Error('ENOENT');
+    };
+    const result = mod.listAvailableDrives('win32', probe);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].path, 'C:\\');
+  });
 });
 
 describe('GET /api/projects/drives', () => {
