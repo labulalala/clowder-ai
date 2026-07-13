@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIMEGuard } from '@/hooks/useIMEGuard';
 import { apiFetch } from '@/utils/api-client';
+import { useDrivesLoader, type DriveInfo } from './use-drives-loader';
 
 interface BrowseEntry {
   name: string;
@@ -19,12 +20,6 @@ interface BrowseResult {
   parent: string | null;
   homePath: string;
   entries: BrowseEntry[];
-}
-
-interface DriveInfo {
-  letter: string;
-  path: string;
-  label: string;
 }
 
 interface DirectoryBrowserProps {
@@ -118,48 +113,7 @@ function shouldFallbackToHome(fallbackOnForbidden: boolean, path: string | undef
   return fallbackOnForbidden && Boolean(path) && status === 403;
 }
 
-/**
- * F113 drive-picker state: tracks whether we're showing the drives grid vs a
- * directory listing, and lazily loads the Windows drive list on first entry.
- * "此电脑" entry is gated by isWindowsServer (the API server's filesystem
- * platform, derived from the browsed path) — NOT the browser client's UA — so
- * a macOS/Linux client browsing a Windows-hosted server still gets drive
- * switching, and a Windows client against a non-Windows server sees no picker.
- */
-function useDrivesLoader(isWindowsServer: boolean) {
-  const [view, setView] = useState<'directory' | 'drives'>('directory');
-  const [drives, setDrives] = useState<DriveInfo[]>([]);
-  const drivesLoadedRef = useRef(false);
 
-  // Lazily fetch drives only when the user enters the drives view — keeps
-  // mount-time API calls unchanged for the common directory-browsing path.
-  useEffect(() => {
-    if (view !== 'drives') return;
-    if (drivesLoadedRef.current) return;
-    drivesLoadedRef.current = true;
-    (async () => {
-      try {
-        const res = await apiFetch('/api/projects/drives');
-        if (!res.ok) return;
-        const data = await res.json();
-        setDrives(Array.isArray(data.drives) ? data.drives : []);
-      } catch {
-        // drives unavailable — non-fatal, drives stays []
-      }
-    })();
-  }, [view]);
-
-  const showDrivesView = useCallback(() => setView('drives'), []);
-  const showDirectoryView = useCallback(() => setView('directory'), []);
-
-  return {
-    view,
-    drives,
-    showThisPcEntry: isWindowsServer,
-    showDrivesView,
-    showDirectoryView,
-  };
-}
 
 export function DirectoryBrowser({
   initialPath,
@@ -181,7 +135,7 @@ export function DirectoryBrowser({
   // path), not the browser client's userAgent — a macOS client browsing a
   // Windows-hosted server still needs drive switching (codex review P2).
   const isWindowsServer = browseResult?.current ? /^[A-Za-z]:[\\/]/.test(browseResult.current) : false;
-  const { view, drives, showThisPcEntry, showDrivesView, showDirectoryView } = useDrivesLoader(isWindowsServer);
+  const { view, drives, drivesState, showThisPcEntry, showDrivesView, showDirectoryView, retryLoadDrives } = useDrivesLoader(isWindowsServer);
 
   const fetchDirectory = useCallback(
     async (path?: string, fallbackOnForbidden = false) => {
@@ -407,11 +361,29 @@ export function DirectoryBrowser({
         {/* ── Drives view (Windows only): grid of drive letters ── */}
         {view === 'drives' && (
           <div className="py-2">
-            {drives.length === 0 ? (
+            {drivesState === 'loading' && (
+              <div className="flex items-center justify-center py-8">
+                <span className="text-xs text-cafe-muted">正在加载磁盘列表...</span>
+              </div>
+            )}
+            {drivesState === 'error' && (
+              <div className="flex flex-col items-center justify-center py-8 gap-2">
+                <span className="text-xs text-cafe-muted">磁盘列表加载失败</span>
+                <button
+                  type="button"
+                  onClick={retryLoadDrives}
+                  className="text-xs text-cafe-accent hover:underline"
+                >
+                  重试
+                </button>
+              </div>
+            )}
+            {drivesState === 'ready' && drives.length === 0 && (
               <div className="flex items-center justify-center py-8">
                 <span className="text-xs text-cafe-muted">未发现可用磁盘</span>
               </div>
-            ) : (
+            )}
+            {drivesState === 'ready' && drives.length > 0 && (
               <div className="grid grid-cols-2 gap-1.5 px-2">
                 {drives.map((drive) => {
                   const isActive = activeProjectPath?.toLowerCase() === drive.path.toLowerCase();
