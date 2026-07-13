@@ -284,6 +284,7 @@ describe('DirectoryBrowser', () => {
         name: 'cat-cafe',
         parent: `${winHome}\\projects`,
         homePath: winHome,
+        isWindows: true,
         entries: [{ name: 'src', path: `${winHome}\\projects\\cat-cafe\\src`, isDirectory: true }],
       }),
     );
@@ -308,6 +309,7 @@ describe('DirectoryBrowser', () => {
         name: 'Projects',
         parent: driveRoot,
         homePath: winHome,
+        isWindows: true,
         entries: [{ name: 'src', path: 'D:\\Projects\\src', isDirectory: true }],
       }),
     );
@@ -460,6 +462,7 @@ describe('DirectoryBrowser', () => {
         name: 'Projects',
         parent: driveRoot,
         homePath: winHome,
+        isWindows: true,
         entries: [{ name: 'src', path: 'D:\\Projects\\src', isDirectory: true }],
       }),
     );
@@ -496,5 +499,117 @@ describe('DirectoryBrowser', () => {
     // appear in the breadcrumb row while viewing 此电脑 (it renders as a
     // non-button span when it is the leaf, so check textContent not buttons).
     expect(container.textContent).not.toContain('Projects');
+  });
+
+  it('hides 此电脑 entry when server capability isWindows is false', async () => {
+    // R4 P2#3: server capability (not path shape) controls whether 此电脑 appears.
+    // A non-Windows browse result (isWindows absent/false) must not show the entry.
+    mockApiFetch.mockReturnValue(
+      jsonOk({
+        current: '/home/user/projects',
+        name: 'projects',
+        parent: '/home/user',
+        homePath: HOME,
+        entries: [{ name: 'cat-cafe', path: `${HOME}/cat-cafe`, isDirectory: true }],
+        // isWindows absent -> false
+      }),
+    );
+    render();
+    await flush();
+
+    expect(findButtonByText('此电脑')).toBeUndefined();
+  });
+
+  it('shows 此电脑 entry when server capability isWindows is true', async () => {
+    // Even with a non-Windows-looking path, server isWindows:true shows the entry.
+    mockApiFetch.mockReturnValue(
+      jsonOk({
+        current: '/home/user/projects',
+        name: 'projects',
+        parent: '/home/user',
+        homePath: HOME,
+        entries: [],
+        isWindows: true,
+      }),
+    );
+    render();
+    await flush();
+
+    expect(findButtonByText('此电脑')).toBeTruthy();
+  });
+
+  it('shows loading state then drives when entering drives view', async () => {
+    // R4 P1#2 regression: pending -> loading -> ready state machine.
+    const winHome = 'C:\\Users\\test';
+    const driveRoot = 'D:\\';
+    // First call: browse. Second call (drives): resolve after a tick.
+    let resolveDrives: (v: unknown) => void = () => {};
+    mockApiFetch
+      .mockReturnValueOnce(
+        jsonOk({
+          current: 'D:\\Projects',
+          name: 'Projects',
+          parent: driveRoot,
+          homePath: winHome,
+          entries: [],
+          isWindows: true,
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDrives = resolve;
+        }),
+      );
+
+    render({ initialPath: 'D:\\Projects' });
+    await flush();
+
+    // Enter drives view
+    await act(async () => {
+      findButtonByText('此电脑')!.click();
+    });
+
+    // Drives request is pending -> loading state
+    expect(container.textContent).toContain('正在加载磁盘列表');
+
+    // Resolve drives
+    await act(async () => {
+      resolveDrives(jsonOk({ drives: [{ letter: 'D', path: driveRoot, label: '本地磁盘 (D:)' }], isWindows: true }));
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    await flush();
+
+    // Ready -> drive grid shows
+    expect(container.textContent).toContain('本地磁盘 (D:)');
+  });
+
+  it('shows error + retry when drives fetch fails', async () => {
+    // R4 P1#2 regression: failed request -> error -> retry -> ready.
+    const winHome = 'C:\\Users\\test';
+    const driveRoot = 'D:\\';
+    mockApiFetch
+      .mockReturnValueOnce(
+        jsonOk({
+          current: 'D:\\Projects',
+          name: 'Projects',
+          parent: driveRoot,
+          homePath: winHome,
+          entries: [],
+          isWindows: true,
+        }),
+      )
+      .mockReturnValueOnce(jsonFail(500, 'server error'));
+
+    render({ initialPath: 'D:\\Projects' });
+    await flush();
+
+    await act(async () => {
+      findButtonByText('此电脑')!.click();
+    });
+    await flush();
+
+    // Error state
+    expect(container.textContent).toContain('磁盘列表加载失败');
+    expect(findButtonByText('重试')).toBeTruthy();
   });
 });

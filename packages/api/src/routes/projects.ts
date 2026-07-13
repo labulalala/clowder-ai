@@ -316,6 +316,7 @@ export const projectsRoutes: FastifyPluginAsync = async (app) => {
         parent: canGoUp ? parentDir : null,
         homePath: homedir(),
         entries: dirs,
+        isWindows: process.platform === 'win32',
       };
     } catch (err) {
       reply.status(400);

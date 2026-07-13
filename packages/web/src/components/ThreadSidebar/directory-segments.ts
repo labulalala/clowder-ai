@@ -15,6 +15,8 @@ export interface BrowseResult {
   parent: string | null;
   homePath: string;
   entries: BrowseEntry[];
+  /** Server-owned capability: true when the API server's filesystem is Windows. */
+  isWindows?: boolean;
 }
 
 export interface BreadcrumbSegment {

@@ -39,10 +39,9 @@ export function DirectoryBrowser({
   const [newDirName, setNewDirName] = useState('');
   const [mkdirError, setMkdirError] = useState<string | null>(null);
   const newDirInputRef = useRef<HTMLInputElement>(null);
-  // Gate "此电脑" on the SERVER's filesystem platform (derived from the browsed
-  // path), not the browser client's userAgent — a macOS client browsing a
-  // Windows-hosted server still needs drive switching (codex review P2).
-  const isWindowsServer = browseResult?.current ? /^[A-Za-z]:[\\/]/.test(browseResult.current) : false;
+  // Server-owned capability (R4 P2#3): isWindows comes from the browse endpoint
+  // (process.platform === win32 on the server), not path-shape heuristic.
+  const isWindowsServer = browseResult?.isWindows ?? false;
   const { view, drives, drivesState, showThisPcEntry, showDrivesView, showDirectoryView, retryLoadDrives } =
     useDrivesLoader(isWindowsServer);
 

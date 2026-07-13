@@ -290,5 +290,18 @@ describe('GET /api/projects/drives', () => {
       assert.ok(typeof d.path === 'string');
       assert.ok(typeof d.label === 'string');
     }
+    // Server-owned capability contract (R4): isWindows reflects the server's
+    // platform, not the client's. On this host it matches process.platform.
+    assert.equal(typeof body.isWindows, 'boolean');
+    assert.equal(body.isWindows, process.platform === 'win32');
+  });
+
+  it('browse endpoint returns isWindows capability', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/api/projects/browse', headers: AUTH_HEADERS });
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(typeof body.isWindows, 'boolean');
+    assert.equal(body.isWindows, process.platform === 'win32');
   });
 });
