@@ -333,6 +333,9 @@ export const projectsRoutes: FastifyPluginAsync = async (app) => {
     if (!requireTrustedProjectIdentity(request, reply)) {
       return { error: 'Identity required (X-Cat-Cafe-User header)' };
     }
-    return { drives: listAvailableDrives() };
+    const allDrives = listAvailableDrives();
+    // Filter to drives whose root is under an allowed root (project-path policy).
+    const accessibleDrives = allDrives.filter((d) => isUnderAllowedRoot(d.path));
+    return { drives: accessibleDrives, isWindows: process.platform === 'win32' };
   });
 };
