@@ -583,8 +583,8 @@ describe('DirectoryBrowser', () => {
     expect(container.textContent).toContain('本地磁盘 (D:)');
   });
 
-  it('shows error + retry when drives fetch fails', async () => {
-    // R4 P1#2 regression: failed request -> error -> retry -> ready.
+  it('recovers to ready after retry (error -> retry -> ready)', async () => {
+    // R5: exercise the full retry transition, not just the button.
     const winHome = 'C:\\Users\\test';
     const driveRoot = 'D:\\';
     mockApiFetch
@@ -598,7 +598,10 @@ describe('DirectoryBrowser', () => {
           isWindows: true,
         }),
       )
-      .mockReturnValueOnce(jsonFail(500, 'server error'));
+      .mockReturnValueOnce(jsonFail(500, 'server error'))
+      .mockReturnValueOnce(
+        jsonOk({ drives: [{ letter: 'D', path: driveRoot, label: '本地磁盘 (D:)' }], isWindows: true }),
+      );
 
     render({ initialPath: 'D:\\Projects' });
     await flush();
@@ -611,5 +614,46 @@ describe('DirectoryBrowser', () => {
     // Error state
     expect(container.textContent).toContain('磁盘列表加载失败');
     expect(findButtonByText('重试')).toBeTruthy();
+
+    // Click retry -> idle -> loading -> ready
+    await act(async () => {
+      findButtonByText('重试')!.click();
+    });
+    await flush();
+
+    // Ready -> drive grid shows (recovered)
+    expect(container.textContent).toContain('本地磁盘 (D:)');
+    expect(container.textContent).not.toContain('磁盘列表加载失败');
+  });
+
+  it('shows 未发现可用磁盘 when ready but no drives', async () => {
+    // R5: empty-state coverage (ready + [] -> 未发现可用磁盘).
+    const winHome = 'C:\\Users\\test';
+    const driveRoot = 'D:\\';
+    mockApiFetch
+      .mockReturnValueOnce(
+        jsonOk({
+          current: 'D:\\Projects',
+          name: 'Projects',
+          parent: driveRoot,
+          homePath: winHome,
+          entries: [],
+          isWindows: true,
+        }),
+      )
+      .mockReturnValueOnce(jsonOk({ drives: [], isWindows: true }));
+
+    render({ initialPath: 'D:\\Projects' });
+    await flush();
+
+    await act(async () => {
+      findButtonByText('此电脑')!.click();
+    });
+    await flush();
+
+    // Ready + empty -> 未发现可用磁盘 (not loading, not error)
+    expect(container.textContent).toContain('未发现可用磁盘');
+    expect(container.textContent).not.toContain('正在加载磁盘列表');
+    expect(container.textContent).not.toContain('磁盘列表加载失败');
   });
 });
