@@ -6,11 +6,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIMEGuard } from '@/hooks/useIMEGuard';
 import { apiFetch } from '@/utils/api-client';
-import { useDrivesLoader } from './use-drives-loader';
-import { pathToSegments, buildBrowseUrl, shouldFallbackToHome, type BrowseResult, type BrowseEntry } from './directory-segments';
-import { HomeIcon, PcIcon, DriveIcon, FolderIcon, TerminalIcon } from './directory-browser-icons';
 import { DirectoryBreadcrumb } from './directory-breadcrumb';
+import { FolderIcon, TerminalIcon } from './directory-browser-icons';
+import { type BrowseResult, buildBrowseUrl, pathToSegments, shouldFallbackToHome } from './directory-segments';
 import { DrivesView } from './drives-view';
+import { useDrivesLoader } from './use-drives-loader';
 
 interface DirectoryBrowserProps {
   /** Initially browsed path — defaults to home via API */
@@ -43,7 +43,8 @@ export function DirectoryBrowser({
   // path), not the browser client's userAgent — a macOS client browsing a
   // Windows-hosted server still needs drive switching (codex review P2).
   const isWindowsServer = browseResult?.current ? /^[A-Za-z]:[\\/]/.test(browseResult.current) : false;
-  const { view, drives, drivesState, showThisPcEntry, showDrivesView, showDirectoryView, retryLoadDrives } = useDrivesLoader(isWindowsServer);
+  const { view, drives, drivesState, showThisPcEntry, showDrivesView, showDirectoryView, retryLoadDrives } =
+    useDrivesLoader(isWindowsServer);
 
   const fetchDirectory = useCallback(
     async (path?: string, fallbackOnForbidden = false) => {
@@ -206,7 +207,7 @@ export function DirectoryBrowser({
           />
         )}
 
-                {view === 'directory' && isLoading && (
+        {view === 'directory' && isLoading && (
           <div className="flex items-center justify-center py-8">
             <span className="text-xs text-cafe-muted animate-pulse">Loading...</span>
           </div>
@@ -321,5 +322,3 @@ export function DirectoryBrowser({
     </div>
   );
 }
-
-

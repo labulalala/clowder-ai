@@ -249,7 +249,9 @@ describe('listAvailableDrives()', () => {
   });
 
   it('returns [] when no drives are accessible (deterministic probe)', () => {
-    const probe = () => { throw new Error('ENOENT'); };
+    const probe = () => {
+      throw new Error('ENOENT');
+    };
     const result = mod.listAvailableDrives('win32', probe);
     assert.deepEqual(result, []);
   });
