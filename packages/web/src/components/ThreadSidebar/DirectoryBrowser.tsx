@@ -6,21 +6,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIMEGuard } from '@/hooks/useIMEGuard';
 import { apiFetch } from '@/utils/api-client';
-import { useDrivesLoader, type DriveInfo } from './use-drives-loader';
-
-interface BrowseEntry {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-}
-
-interface BrowseResult {
-  current: string;
-  name: string;
-  parent: string | null;
-  homePath: string;
-  entries: BrowseEntry[];
-}
+import { useDrivesLoader } from './use-drives-loader';
+import { pathToSegments, buildBrowseUrl, shouldFallbackToHome, type BrowseResult, type BrowseEntry } from './directory-segments';
+import { HomeIcon, PcIcon, DriveIcon, FolderIcon, TerminalIcon } from './directory-browser-icons';
 
 interface DirectoryBrowserProps {
   /** Initially browsed path — defaults to home via API */
@@ -32,88 +20,6 @@ interface DirectoryBrowserProps {
   /** Called when user cancels */
   onCancel: () => void;
 }
-
-/**
- * Build breadcrumb segments for a Windows drive path (e.g. "D:\XXX").
- * The drive root is its own clickable segment so the user can navigate back
- * to "D:\" — without this, the drive letter layer is silently swallowed and
- * the breadcrumb reads "此电脑 > XXX" instead of "此电脑 > 本地磁盘 (D:) > XXX".
- * Drive root path keeps the trailing separator (realpath needs it to resolve
- * the drive rather than cwd-on-drive).
- */
-function windowsDriveSegments(absPath: string, sep: string): { label: string; path: string }[] {
-  const parts = absPath.split(/[/\\]/).filter(Boolean);
-  if (parts.length === 0) return [];
-
-  const driveRoot = `${parts[0]}${sep}`;
-  const segments: { label: string; path: string }[] = [{ label: parts[0], path: driveRoot }];
-  let accumulated = driveRoot;
-  for (let i = 1; i < parts.length; i++) {
-    accumulated = accumulated.endsWith(sep) ? `${accumulated}${parts[i]}` : `${accumulated}${sep}${parts[i]}`;
-    segments.push({ label: parts[i], path: accumulated });
-  }
-  return segments;
-}
-
-/**
- * Parse an absolute path into breadcrumb segments.
- * When path is under homePath: Home > relative segments (each clickable).
- * When path is outside homePath (e.g. /tmp, /Volumes): show the full path
- * segments from the allowed root, using the parent field for "go up".
- * Handles both / and \ separators for cross-platform support.
- */
-function pathToSegments(absPath: string, homePath: string): { label: string; path: string }[] {
-  const sep = absPath.includes('\\') ? '\\' : '/';
-
-  // Case 1: path is at or under home — use "Home" as root label
-  if (absPath === homePath || absPath.startsWith(homePath + sep)) {
-    const segments: { label: string; path: string }[] = [{ label: 'Home', path: '' }];
-    if (absPath === homePath) return segments;
-
-    const relative = absPath.slice(homePath.length + 1);
-    if (!relative) return segments;
-
-    const parts = relative.split(/[/\\]/).filter(Boolean);
-    let accumulated = homePath;
-    for (const part of parts) {
-      accumulated += sep + part;
-      segments.push({ label: part, path: accumulated });
-    }
-    return segments;
-  }
-
-  // Case 2: path is outside home — all segments are clickable.
-  // We can't know the full allowlist on the frontend. If the user clicks
-  // a non-allowed ancestor, the backend returns 403 and the error is shown
-  // gracefully. This is better than hiding valid ancestors like /tmp which
-  // IS in the default allowlist (project-path.ts:22-35).
-  if (/^[A-Za-z]:[\\/]?/.test(absPath)) {
-    return windowsDriveSegments(absPath, sep);
-  }
-
-  const parts = absPath.split(/[/\\]/).filter(Boolean);
-  const segments: { label: string; path: string }[] = [];
-  let accumulated = absPath.startsWith('/') ? '' : parts[0];
-  const startIdx = absPath.startsWith('/') ? 0 : 1;
-  for (let i = startIdx; i < parts.length; i++) {
-    accumulated += sep + parts[i];
-    segments.push({ label: parts[i], path: accumulated });
-  }
-
-  return segments;
-}
-
-/** Build the browse API URL for an optional path argument. */
-function buildBrowseUrl(path?: string): string {
-  return path ? `/api/projects/browse?path=${encodeURIComponent(path)}` : '/api/projects/browse';
-}
-
-/** Whether a failed browse response should trigger the homedir fallback. */
-function shouldFallbackToHome(fallbackOnForbidden: boolean, path: string | undefined, status: number): boolean {
-  return fallbackOnForbidden && Boolean(path) && status === 403;
-}
-
-
 
 export function DirectoryBrowser({
   initialPath,
@@ -527,57 +433,4 @@ export function DirectoryBrowser({
   );
 }
 
-function HomeIcon() {
-  return (
-    <svg aria-hidden="true" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-    </svg>
-  );
-}
 
-function PcIcon() {
-  return (
-    <svg aria-hidden="true" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M2 4.5A1.5 1.5 0 013.5 3h13A1.5 1.5 0 0118 4.5v8a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 012 12.5v-8z" />
-      <path d="M4 14h12v1.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 014 15.5V14z" opacity="0.5" />
-    </svg>
-  );
-}
-
-function DriveIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={`w-4 h-4 flex-shrink-0 ${className ?? ''}`}
-      viewBox="0 0 16 16"
-      fill="currentColor"
-    >
-      <path d="M2 4.5A1.5 1.5 0 013.5 3h9A1.5 1.5 0 0114 4.5v7A1.5 1.5 0 0112.5 13h-9A1.5 1.5 0 012 11.5v-7zm2.5 6.5a1 1 0 100-2 1 1 0 000 2z" />
-    </svg>
-  );
-}
-
-function FolderIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={`w-4 h-4 flex-shrink-0 ${className ?? ''}`}
-      viewBox="0 0 16 16"
-      fill="currentColor"
-    >
-      <path d="M1 3.5A1.5 1.5 0 012.5 2h3.879a1.5 1.5 0 011.06.44l1.122 1.12A1.5 1.5 0 009.62 4H13.5A1.5 1.5 0 0115 5.5v7a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9z" />
-    </svg>
-  );
-}
-
-function TerminalIcon() {
-  return (
-    <svg aria-hidden="true" className="w-3.5 h-3.5 text-cafe-muted mt-2.5" viewBox="0 0 20 20" fill="currentColor">
-      <path
-        fillRule="evenodd"
-        d="M2 4.25A2.25 2.25 0 014.25 2h11.5A2.25 2.25 0 0118 4.25v11.5A2.25 2.25 0 0115.75 18H4.25A2.25 2.25 0 012 15.75V4.25zM7.664 6.23a.75.75 0 00-1.078 1.04l2.705 2.805-2.705 2.805a.75.75 0 001.078 1.04l3.25-3.37a.75.75 0 000-1.04l-3.25-3.28zM11 13a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
