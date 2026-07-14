@@ -494,6 +494,9 @@ describe('DirectoryBrowser', () => {
     // The 新建 button is hidden AND the inline editor/input is cleared.
     expect(findButtonByText('新建')).toBeUndefined();
     expect(folderInput()).toBeNull();
+    // Virtual root is not a concrete directory; do not keep the previously
+    // browsed directory in the manual path input.
+    expect((container.querySelector('input[placeholder="Enter path..."]') as HTMLInputElement).value).toBe('');
     // R2 follow-up P1: drives view must not render the stale directory
     // breadcrumb. The old segment "Projects" (from D:\Projects) must not
     // appear in the breadcrumb row while viewing 此电脑 (it renders as a

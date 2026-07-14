@@ -121,6 +121,11 @@ export function DirectoryPickerModal({
     [handleSelectPath],
   );
 
+  const handleBrowserVirtualLocationChange = useCallback(() => {
+    setPathError(null);
+    setSelectedPath(null);
+  }, []);
+
   // F068: Submit path from text input — validate via browse endpoint before accepting
   const handlePathSubmit = useCallback(async () => {
     const trimmed = pathInput.trim();
@@ -408,6 +413,7 @@ export function DirectoryPickerModal({
               initialPath={browserInitialPathRef.current}
               activeProjectPath={cwdPath ?? undefined}
               onCurrentPathChange={handleBrowserCurrentPathChange}
+              onVirtualLocationChange={handleBrowserVirtualLocationChange}
               onCancel={() => setBrowserOpen(false)}
             />
           </div>

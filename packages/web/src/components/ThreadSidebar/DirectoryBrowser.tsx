@@ -19,6 +19,8 @@ interface DirectoryBrowserProps {
   activeProjectPath?: string;
   /** Called whenever the browsed directory changes */
   onCurrentPathChange?: (path: string) => void;
+  /** Called when browsing a virtual location that is not a concrete directory */
+  onVirtualLocationChange?: () => void;
   /** Called when user cancels */
   onCancel: () => void;
 }
@@ -27,6 +29,7 @@ export function DirectoryBrowser({
   initialPath,
   activeProjectPath,
   onCurrentPathChange,
+  onVirtualLocationChange,
   onCancel,
 }: DirectoryBrowserProps) {
   const [browseResult, setBrowseResult] = useState<BrowseResult | null>(null);
@@ -99,8 +102,10 @@ export function DirectoryBrowser({
     setCreatingDir(false);
     setNewDirName('');
     setMkdirError(null);
+    setPathInput('');
+    onVirtualLocationChange?.();
     showDrivesView();
-  }, [showDrivesView]);
+  }, [onVirtualLocationChange, showDrivesView]);
 
   const handleStartCreateDir = useCallback(() => {
     setCreatingDir(true);
